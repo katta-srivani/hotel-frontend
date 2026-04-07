@@ -14,7 +14,7 @@ function RoomCard({ room, setRooms }) {
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
-  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  // Removed unused: reviewSubmitting, setReviewSubmitting
   const [reviewError, setReviewError] = useState("");
   const [reviewSuccess, setReviewSuccess] = useState("");
 
@@ -34,7 +34,7 @@ function RoomCard({ room, setRooms }) {
     e.preventDefault();
     setReviewError("");
     setReviewSuccess("");
-    setReviewSubmitting(true);
+    // removed setReviewSubmitting
 
     try {
       const token = localStorage.getItem("token");
@@ -59,12 +59,12 @@ function RoomCard({ room, setRooms }) {
       setReviewError("Failed to submit review");
     }
 
-    setReviewSubmitting(false);
+    // removed setReviewSubmitting
   };
 
   // ================= FAVORITES =================
   const [isFavorite, setIsFavorite] = useState(false);
-  const [favoriteLoading, setFavoriteLoading] = useState(false);
+  // Removed unused: favoriteLoading, setFavoriteLoading
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -84,7 +84,7 @@ function RoomCard({ room, setRooms }) {
     const token = localStorage.getItem("token");
     if (!token) return alert("Login first");
 
-    setFavoriteLoading(true);
+    // removed setFavoriteLoading
 
     try {
       if (isFavorite) {
@@ -104,7 +104,7 @@ function RoomCard({ room, setRooms }) {
       alert("Failed");
     }
 
-    setFavoriteLoading(false);
+    // removed setFavoriteLoading
   };
 
   // ================= OTHER STATE =================

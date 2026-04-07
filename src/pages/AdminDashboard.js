@@ -14,7 +14,6 @@ import api from '../utils/api';
 import NotificationBell from '../components/NotificationBell';
 import toast from 'react-hot-toast';
 import {
-  FaBox, FaCalendar, FaStar, FaTag,
   FaPlus, FaTrash, FaEdit, FaChartBar,
   FaCoins, FaCheckCircle
 } from 'react-icons/fa';

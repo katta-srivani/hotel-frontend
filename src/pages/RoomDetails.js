@@ -6,57 +6,59 @@ import toast from "react-hot-toast";
 import { AuthContext } from "../context/AuthContext";
 
 function RoomDetails() {
-    // Review state
-    const [reviews, setReviews] = useState([]);
-    const [reviewLoading, setReviewLoading] = useState(true);
-    const [reviewError, setReviewError] = useState(null);
-    const [newRating, setNewRating] = useState(5);
-    const [newComment, setNewComment] = useState("");
-    const [submittingReview, setSubmittingReview] = useState(false);
-    const [refreshReviews, setRefreshReviews] = useState(false);
-    // Fetch reviews for this room
-    useEffect(() => {
-      if (!id) return;
-      setReviewLoading(true);
-      setReviewError(null);
-      api
-        .get(`/reviews/${id}`)
-        .then((res) => {
-          setReviews(res.data.reviews || []);
-        })
-        .catch((err) => {
-          setReviewError("Failed to load reviews");
-        })
-        .finally(() => setReviewLoading(false));
-    }, [id, refreshReviews]);
-    // Submit a new review
-    const handleSubmitReview = async (e) => {
-      e.preventDefault();
-      if (!newComment.trim()) {
-        toast.error("Please enter a comment");
-        return;
-      }
-      setSubmittingReview(true);
-      try {
-        await api.post("/reviews", {
-          roomId: id,
-          rating: newRating,
-          comment: newComment,
-        });
-        toast.success("Review submitted!");
-        setNewRating(5);
-        setNewComment("");
-        setRefreshReviews((v) => !v);
-      } catch (err) {
-        toast.error(
-          err?.response?.data?.message || "Failed to submit review"
-        );
-      } finally {
-        setSubmittingReview(false);
-      }
-    };
   const { id } = useParams();
   const { user } = useContext(AuthContext);
+  // Review state
+  const [reviews, setReviews] = useState([]);
+  const [reviewLoading, setReviewLoading] = useState(true);
+  const [reviewError, setReviewError] = useState(null);
+  const [newRating, setNewRating] = useState(5);
+  const [newComment, setNewComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [refreshReviews, setRefreshReviews] = useState(false);
+
+  // Fetch reviews for this room
+  useEffect(() => {
+    setReviewLoading(true);
+    setReviewError(null);
+    api
+      .get(`/reviews/${id}`)
+      .then((res) => {
+        setReviews(res.data.reviews || []);
+      })
+      .catch(() => {
+        setReviewError("Failed to load reviews");
+      })
+      .finally(() => setReviewLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, refreshReviews]);
+
+  // Submit a new review
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim()) {
+      toast.error("Please enter a comment");
+      return;
+    }
+    setSubmittingReview(true);
+    try {
+      await api.post("/reviews", {
+        roomId: id,
+        rating: newRating,
+        comment: newComment,
+      });
+      toast.success("Review submitted!");
+      setNewRating(5);
+      setNewComment("");
+      setRefreshReviews((v) => !v);
+    } catch (err) {
+      toast.error(
+        err?.response?.data?.message || "Failed to submit review"
+      );
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -74,10 +76,6 @@ function RoomDetails() {
   const [cancelLoading, setCancelLoading] = useState(false);
 
   // 📦 Fetch room
-  useEffect(() => {
-    fetchRoom();
-  }, [id]);
-
   const fetchRoom = async () => {
     try {
       const res = await api.get(`/rooms/${id}`);
@@ -88,27 +86,24 @@ function RoomDetails() {
       setLoading(false);
     }
   };
+  useEffect(() => {
+    fetchRoom();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   // 📦 Fetch booking
-  useEffect(() => {
-    if (user && id) fetchMyBooking();
-  }, [user, id]);
-
   const fetchMyBooking = async () => {
     try {
       const res = await api.get("/bookings/my");
-
       const booking = res.data.bookings.find(
         (b) =>
           b.room._id === id &&
           b.status !== "cancelled" &&
-          ["pending", "approved"].includes(b.status) // ✅ include COD
+          ["pending", "approved"].includes(b.status)
       );
-
       if (booking) {
         setIsBooked(true);
         setCurrentBooking(booking);
-
         if (booking.paymentStatus === "pending") {
           setPendingBookingId(booking._id);
         } else {
@@ -119,6 +114,10 @@ function RoomDetails() {
       console.error(err);
     }
   };
+  useEffect(() => {
+    if (user && id) fetchMyBooking();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, id]);
 
   // ⏳ Countdown timer only for pending online payment
   useEffect(() => {
@@ -298,7 +297,7 @@ function RoomDetails() {
             <img
               key={idx}
               src={url}
-              alt={`Room image ${idx + 1}`}
+              alt={room.title ? `${room.title} image ${idx + 1}` : `Room image ${idx + 1}`}
               className="rounded-lg w-full h-64 object-cover shadow"
             />
           ))}

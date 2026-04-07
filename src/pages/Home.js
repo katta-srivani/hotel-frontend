@@ -6,14 +6,14 @@ import { FaSearch } from "react-icons/fa";
 import RoomCard from "../components/Roomcard";
 
 function Home() {
-  const navigate = useNavigate();
+  // Removed unused: navigate
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [rooms, setRooms] = useState([]);
+  // Removed unused: rooms, setRooms
   const [filteredRooms, setFilteredRooms] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const [activeCategory, setActiveCategory] = useState("All");
+  // Removed unused: activeCategory, setActiveCategory
 
   // 🔥 FILTER STATE
   const [filters, setFilters] = useState({
@@ -40,7 +40,7 @@ function Home() {
       setLoading(true);
       const res = await api.get("/rooms/search");
       const data = res.data.rooms || res.data;
-      setRooms(data);
+      // removed setRooms
       setFilteredRooms(data);
     } catch (err) {
       console.error(err);
@@ -123,16 +123,8 @@ function Home() {
   };
 
   // 🎯 CATEGORY LOGIC (FIXED)
-  const categoryFilteredRooms =
-    activeCategory === "All"
-      ? filteredRooms
-      : filteredRooms.filter((r) => {
-          if (activeCategory === "Luxury") return r.pricePerNight > 5000;
-          if (activeCategory === "Budget") return r.pricePerNight < 2000;
-          if (activeCategory === "Popular") return (r.averageRating || 0) >= 4;
-          return true;
-        });
-
+  // removed activeCategory logic
+  const categoryFilteredRooms = filteredRooms;
   const matchingCount = categoryFilteredRooms.length;
 
   return (
@@ -275,7 +267,7 @@ function Home() {
             <p className="col-span-full text-center text-gray-500">No rooms match your filters</p>
           ) : (
             categoryFilteredRooms.map((room) => (
-              <RoomCard key={room._id} room={room} setRooms={setRooms} />
+              <RoomCard key={room._id} room={room} />
             ))
           )}
         </div>
