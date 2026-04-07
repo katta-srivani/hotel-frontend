@@ -74,7 +74,7 @@ function Checkout() {
             }
         };
         checkAlreadyBooked();
-    }, []);
+    }, [navigate]);
 
     const fetchRoom = async (roomId) => {
         try {

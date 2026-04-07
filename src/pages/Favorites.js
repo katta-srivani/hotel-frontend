@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../utils/api';
-import { FaHeart, FaRegHeart } from 'react-icons/fa';
+import { FaHeart } from 'react-icons/fa';
 
 function Favorites() {
   const [favorites, setFavorites] = useState([]);

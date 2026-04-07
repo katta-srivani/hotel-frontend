@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -14,8 +14,7 @@ import api from '../utils/api';
 import NotificationBell from '../components/NotificationBell';
 import toast from 'react-hot-toast';
 import {
-  FaPlus, FaTrash, FaEdit, FaChartBar,
-  FaCoins, FaCheckCircle
+  FaPlus, FaTrash, FaEdit, FaChartBar
 } from 'react-icons/fa';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
@@ -79,60 +78,33 @@ function AdminDashboard() {
     return [];
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [activeTab]);
-
-  useEffect(() => {
-    if (showOfferModal) {
-      if (editOffer) {
-        setOfferForm({
-          ...editOffer,
-          expiryDate: editOffer.expiryDate ? editOffer.expiryDate.slice(0, 10) : '',
-        });
-      } else {
-        setOfferForm(initialOfferState);
-      }
-    }
-    // eslint-disable-next-line
-  }, [showOfferModal, editOffer]);
-
-  const fetchData = async () => {
+  const fetchData = React.useCallback(async () => {
     setLoading(true);
     try {
 
+      // Flattened logic to remove redundant nested blocks
       if (activeTab === 'rooms') {
         const res = await api.get('/rooms');
         setRooms(extractArray(res));
-      }
-
-      if (activeTab === 'bookings') {
+      } else if (activeTab === 'bookings') {
         const res = await api.get('/bookings/admin');
         setBookings(extractArray(res));
-      }
-
-      if (activeTab === 'users') {
+      } else if (activeTab === 'users') {
         const res = await api.get('/users');
         setUsers(Array.isArray(res?.data?.data) ? res.data.data : []);
-      }
-
-      if (activeTab === 'stats') {
+      } else if (activeTab === 'stats') {
         const roomRes = await api.get('/rooms');
         const bookingRes = await api.get('/bookings/admin');
-
         const roomsData = extractArray(roomRes);
         const bookingsData = extractArray(bookingRes);
-
         const totalRevenue = bookingsData.reduce(
           (sum, b) => sum + (b.totalAmount || 0),
           0
         );
-
         // Get set of booked room IDs (all time)
         const bookedRoomIds = new Set(bookingsData.map(b => (b.room?._id || b.room)));
         const roomsBooked = roomsData.filter(r => bookedRoomIds.has(r._id)).length;
         const roomsNotBooked = roomsData.length - roomsBooked;
-
         // Booked for today
         const today = new Date();
         today.setHours(0,0,0,0);
@@ -149,12 +121,10 @@ function AdminDashboard() {
         );
         const roomsBookedToday = roomsData.filter(r => bookedTodayIds.has(r._id)).length;
         const roomsNotBookedToday = roomsData.length - roomsBookedToday;
-
         // Payment status tracking
         const paymentPending = bookingsData.filter(b => (b.paymentStatus || '').toLowerCase() === 'pending').length;
         const paymentCOD = bookingsData.filter(b => (b.paymentMethod || '').toLowerCase() === 'cod').length;
         const paymentRazorpay = bookingsData.filter(b => (b.paymentMethod || '').toLowerCase() === 'razorpay').length;
-
         setStats({
           totalRooms: roomsData.length,
           totalBookings: bookingsData.length,
@@ -167,9 +137,7 @@ function AdminDashboard() {
           paymentCOD,
           paymentRazorpay
         });
-      }
-
-      if (activeTab === 'analytics') {
+      } else if (activeTab === 'analytics') {
         const query = `?from=${dateRange.from || ''}&to=${dateRange.to || ''}`;
         const res = await api.get(`/bookings/admin/analytics${query}`);
         setAnalytics({
@@ -178,14 +146,10 @@ function AdminDashboard() {
           bookingsPerDay: res.data?.bookingsPerDay || [],
           revenuePerDay: res.data?.revenuePerDay || [],
         });
-      }
-
-      if (activeTab === 'reviews') {
+      } else if (activeTab === 'reviews') {
         const res = await api.get('/reviews/admin/unapproved');
         setUnapprovedReviews(res.data?.reviews || []);
-      }
-
-      if (activeTab === 'offers') {
+      } else if (activeTab === 'offers') {
         const res = await api.get('/offers');
         setOffers(res.data?.offers || []);
       }
@@ -195,7 +159,11 @@ function AdminDashboard() {
       toast.error('Failed to load data');
     }
     setLoading(false);
-  };
+  }, [activeTab, dateRange]);
+
+  useEffect(() => {
+    fetchData();
+  }, [activeTab, dateRange, fetchData]);
 
   // ACTIONS
   const handleDeleteRoom = async (id) => {
@@ -293,7 +261,7 @@ function AdminDashboard() {
     }
     setRoomFormLoading(false);
   };
-      {/* ROOMS TABLE */}
+      
       {activeTab === 'rooms' && (
         <div className="p-6 space-y-6">
           <div className="flex justify-between items-center mb-2">
@@ -429,10 +397,7 @@ function AdminDashboard() {
         </div>
       )}
 
-  const handleCancelBooking = async (id) => {
-    await api.put(`/bookings/${id}`, { paymentStatus: 'cancelled' });
-    fetchData();
-  };
+  
 
   const handleApproveReview = async (id) => {
     await api.put(`/reviews/admin/approve/${id}`);
@@ -535,6 +500,141 @@ function AdminDashboard() {
           </button>
         ))}
       </div>
+       {activeTab === 'rooms' && (
+        <div className="p-6 space-y-6">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-lg font-bold">All Rooms</h2>
+            <button onClick={handleAddRoom} className="bg-blue-600 text-white px-3 py-1 rounded flex items-center gap-1"><FaPlus /> Add Room</button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white rounded shadow">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="p-2 text-left text-xs font-bold">Title</th>
+                  <th className="p-2 text-left text-xs font-bold">Type</th>
+                  <th className="p-2 text-left text-xs font-bold">Price</th>
+                  <th className="p-2 text-left text-xs font-bold">Status (Today)</th>
+                  <th className="p-2 text-left text-xs font-bold">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rooms.map(room => {
+                  // Determine if this room is booked today
+                  const today = new Date();
+                  today.setHours(0,0,0,0);
+                  const isBookedToday = bookings.some(b => {
+                    const from = b.fromDate ? new Date(b.fromDate) : null;
+                    const to = b.toDate ? new Date(b.toDate) : null;
+                    const roomId = b.room?._id || b.room;
+                    if (!from || !to) return false;
+                    return roomId === room._id && from <= today && today <= to;
+                  });
+                  return (
+                    <tr key={room._id} className="border-b hover:bg-gray-50">
+                      <td className="p-2">{room.title}</td>
+                      <td className="p-2">{room.type}</td>
+                      <td className="p-2">₹{room.price}</td>
+                      <td className="p-2 font-semibold">
+                        {isBookedToday ? <span className="text-green-600">Booked</span> : <span className="text-gray-500">Not Booked</span>}
+                      </td>
+                      <td className="p-2 flex gap-2">
+                        <button
+                          className="bg-yellow-500 text-white px-2 py-1 rounded text-xs hover:bg-yellow-600 flex items-center gap-1"
+                          title="Edit"
+                          onClick={() => handleEditRoom(room)}
+                        ><FaEdit /> Edit</button>
+                        <button
+                          className="bg-red-600 text-white px-2 py-1 rounded text-xs hover:bg-red-700 flex items-center gap-1"
+                          title="Delete"
+                          onClick={() => handleDeleteRoom(room._id)}
+                        ><FaTrash /> Delete</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {rooms.length === 0 && (
+                  <tr><td colSpan={4} className="p-4 text-center text-gray-500">No rooms found.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {/* Room Modal Form */}
+          {showRoomModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded shadow w-full max-w-md relative">
+                <button className="absolute top-2 right-2 text-gray-500" onClick={() => setShowRoomModal(false)}>&times;</button>
+                <h3 className="text-lg font-bold mb-4">{editRoom ? 'Edit Room' : 'Add Room'}</h3>
+                <form onSubmit={handleRoomFormSubmit} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold mb-1">Title</label>
+                    <input name="title" value={roomForm.title} onChange={handleRoomFormChange} className="border p-1 rounded w-full" required />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1">Room Type</label>
+                    <select name="roomType" value={roomForm.roomType} onChange={handleRoomFormChange} className="border p-1 rounded w-full" required>
+                      <option value="Standard">Standard</option>
+                      <option value="Deluxe">Deluxe</option>
+                      <option value="Suite">Suite</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1">Price Per Night</label>
+                    <input name="pricePerNight" type="number" value={roomForm.pricePerNight} onChange={handleRoomFormChange} className="border p-1 rounded w-full" required min="1" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1">Description</label>
+                    <textarea name="description" value={roomForm.description} onChange={handleRoomFormChange} className="border p-1 rounded w-full" required />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-xs font-semibold mb-1">Max Guests</label>
+                      <input name="maxGuests" type="number" value={roomForm.maxGuests} onChange={handleRoomFormChange} className="border p-1 rounded w-full" required min="1" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-semibold mb-1">Bed Type</label>
+                      <input name="bedType" value={roomForm.bedType} onChange={handleRoomFormChange} className="border p-1 rounded w-full" required />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-xs font-semibold mb-1">Size</label>
+                      <input name="size" value={roomForm.size} onChange={handleRoomFormChange} className="border p-1 rounded w-full" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-semibold mb-1">View</label>
+                      <input name="view" value={roomForm.view} onChange={handleRoomFormChange} className="border p-1 rounded w-full" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1">Amenities</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {['wifi','parking','breakfast','pool'].map(a => (
+                        <label key={a} className="flex items-center gap-1 text-xs">
+                          <input type="checkbox" name={`amenities.${a}`} checked={roomForm.amenities[a]} onChange={handleRoomFormChange} /> {a.charAt(0).toUpperCase()+a.slice(1)}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1">Image URLs (comma separated)</label>
+                    <input name="imageUrls" value={roomForm.imageUrls} onChange={handleRoomFormChange} className="border p-1 rounded w-full" required />
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 text-xs">
+                      <input type="checkbox" name="isAvailable" checked={roomForm.isAvailable} onChange={handleRoomFormChange} /> Available
+                    </label>
+                  </div>
+                  <div className="flex gap-2 justify-end mt-4">
+                    <button type="button" className="px-4 py-1 rounded border" onClick={() => setShowRoomModal(false)} disabled={roomFormLoading}>Cancel</button>
+                    <button type="submit" className="bg-blue-600 text-white px-4 py-1 rounded" disabled={roomFormLoading}>{roomFormLoading ? 'Saving...' : (editRoom ? 'Update' : 'Add')}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* OFFERS TAB */}
       {activeTab === 'offers' && (
         <div className="p-6 space-y-6">
