@@ -1,70 +1,70 @@
-# Getting Started with Create React App
+# Hotel Booking Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is the React frontend for the Hotel Booking MERN stack project.
 
-## Available Scripts
+## Features
+- User registration and login
+- Room listing and details
+- Booking flow (with payment and COD)
+- User reviews (add, view)
+- Profile management
+- Responsive UI
 
-In the project directory, you can run:
 
-### `npm start`
+## Getting Started
+1. Install dependencies:
+	```bash
+	npm install
+	```
+2. Start the development server:
+	```bash
+	npm start
+	```
+3. The app runs on `http://localhost:3000` by default.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Deployment
+To build the app for production:
+```bash
+npm run build
+```
+This will create a `build/` folder with optimized static files.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+You can deploy the contents of the `build/` folder to any static hosting service (Vercel, Netlify, GitHub Pages, etc.).
 
-### `npm test`
+For more details, see the official React deployment guide: [https://create-react-app.dev/docs/deployment/](https://create-react-app.dev/docs/deployment/)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Environment Variables
+- Configure API base URL in `src/utils/api.js` if needed.
 
-### `npm run build`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Folder Structure & Functionality
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```
+hotel-booking-frontend/
+├── public/            # Static files and index.html
+├── src/
+│   ├── components/    # Reusable UI components (Navbar, Roomcard, ReviewList, etc.)
+│   ├── context/       # React context for global state (AuthContext)
+│   ├── pages/         # Main app pages (Home, RoomDetails, Profile, AdminDashboard, etc.)
+│   ├── utils/         # Utility functions (api.js for Axios setup)
+│   ├── App.js         # Main app component and routes
+│   ├── index.js       # App entry point
+│   └── ...            # Other config and style files
+├── .env               # Environment variables (frontend)
+├── package.json        # Project dependencies and scripts
+├── README.md
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Key Functionalities
+- **components/**: Contains all reusable UI elements (navigation, room cards, review display, etc.)
+- **context/**: Manages authentication state and user info across the app.
+- **pages/**: Each file is a main page/route (e.g., Home, RoomDetails, Profile, AdminDashboard, etc.).
+- **utils/api.js**: Axios instance with JWT token handling for API requests.
+- **App.js**: Sets up React Router and main layout.
 
-### `npm run eject`
+## Notes
+- Requires the backend server to be running.
+- Make sure MongoDB and backend are set up as per backend README.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
