@@ -262,11 +262,7 @@ function AdminDashboard() {
     setRoomFormLoading(false);
   };
       
-      {activeTab === 'rooms' &&
-        <div className="p-6 space-y-6">
-          {/* ...existing code for rooms table and modal... */}
-        </div>
-      }
+      
 
   
 
