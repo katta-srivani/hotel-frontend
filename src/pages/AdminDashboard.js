@@ -259,14 +259,10 @@ function AdminDashboard() {
     } catch (err) {
       toast.error('Failed to save room');
     }
-    setRoomFormLoading(false);
-  };
-      
-      
+      setRoomFormLoading(false);
+    };
 
-  
-
-  const handleApproveReview = async (id) => {
+    const handleApproveReview = async (id) => {
     await api.put(`/reviews/admin/approve/${id}`);
     setUnapprovedReviews(prev => prev.filter(r => r?._id !== id));
   };
