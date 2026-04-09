@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "../utils/api";
 import { FaStar, FaTimes, FaHeart } from "react-icons/fa";
 import ReviewList from "./ReviewList";
 
@@ -21,8 +21,8 @@ function RoomCard({ room, setRooms }) {
   useEffect(() => {
     if (!room?._id) return;
     setReviewsLoading(true);
-    axios
-      .get(`http://localhost:5000/api/reviews/${room._id}`)
+    api
+      .get(`/reviews/${room._id}`)
       .then((res) => {
         setReviews(res.data.reviews || []);
         setReviewsLoading(false);
@@ -43,17 +43,16 @@ function RoomCard({ room, setRooms }) {
         return;
       }
 
-      await axios.post(
-        "http://localhost:5000/api/reviews",
-        { roomId: room._id, rating: reviewRating, comment: reviewComment },
-        { headers: { Authorization: `Bearer ${token}` } }
+      await api.post(
+        "/reviews",
+        { roomId: room._id, rating: reviewRating, comment: reviewComment }
       );
 
       setReviewSuccess("Review submitted! Pending approval.");
       setReviewRating(0);
       setReviewComment("");
 
-      const res = await axios.get(`http://localhost:5000/api/reviews/${room._id}`);
+      const res = await api.get(`/reviews/${room._id}`);
       setReviews(res.data.reviews || []);
     } catch (err) {
       setReviewError("Failed to submit review");
@@ -70,10 +69,8 @@ function RoomCard({ room, setRooms }) {
     const token = localStorage.getItem("token");
     if (!room?._id || !token) return;
 
-    axios
-      .get("http://localhost:5000/api/users/favorites", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+    api
+      .get("/users/favorites")
       .then((res) => {
         const favs = res.data.data || [];
         setIsFavorite(favs.some((f) => f._id === room._id));
@@ -88,16 +85,10 @@ function RoomCard({ room, setRooms }) {
 
     try {
       if (isFavorite) {
-        await axios.delete(`http://localhost:5000/api/users/remove-favorite/${room._id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await api.delete(`/users/remove-favorite/${room._id}`);
         setIsFavorite(false);
       } else {
-        await axios.post(
-          `http://localhost:5000/api/users/add-favorite/${room._id}`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        await api.post(`/users/add-favorite/${room._id}`);
         setIsFavorite(true);
       }
     } catch {
