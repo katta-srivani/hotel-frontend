@@ -4,17 +4,6 @@ import api from "../utils/api";
 import toast from "react-hot-toast";
 import { AuthContext } from "../context/AuthContext";
 
-
-function getDatesInRange(start, end) {
-  const arr = [];
-  let dt = new Date(start);
-  while (dt <= end) {
-    arr.push(new Date(dt));
-    dt.setDate(dt.getDate() + 1);
-  }
-  return arr;
-}
-
 function RoomDetails() {
   const { id } = useParams();
   const { user } = useContext(AuthContext);
@@ -220,21 +209,7 @@ function RoomDetails() {
   };
 
   // Booked date ranges for disabling in date picker
-  const [bookedRanges, setBookedRanges] = useState([]);
 
-  // Fetch all approved bookings for this room
-  useEffect(() => {
-    if (!id) return;
-    api.get(`/bookings/room/${id}`)
-      .then(res => {
-        setBookedRanges(res.data.bookings || []);
-      })
-      .catch(() => {
-        setBookedRanges([]);
-      });
-  }, [id]);
-
-  // Compute all booked dates for disabling in the date picker
 
 
   if (loading) return <p className="p-5">Loading...</p>;
