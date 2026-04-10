@@ -235,10 +235,7 @@ function RoomDetails() {
   }, [id]);
 
   // Compute all booked dates for disabling in the date picker
-  const bookedDates = bookedRanges.flatMap(b => {
-    if (!b.fromDate || !b.toDate) return [];
-    return getDatesInRange(new Date(b.fromDate), new Date(b.toDate));
-  });
+
 
   if (loading) return <p className="p-5">Loading...</p>;
   if (!room) return <p className="p-5">Room not found</p>;
