@@ -11,16 +11,24 @@ function NotificationBell() {
   }, []);
 
   const fetchNotifications = async () => {
-    const res = await api.get("/notifications");
-    setNotifications(res.data.notifications);
+    try {
+      const res = await api.get("/notifications");
+      setNotifications(res.data.notifications || []);
+    } catch {
+      setNotifications([]);
+    }
   };
 
   const markAsRead = async (id) => {
-    await api.put(`/notifications/${id}`);
-    fetchNotifications();
+    try {
+      await api.put(`/notifications/${id}`);
+      fetchNotifications();
+    } catch {
+      // Ignore notification update errors to keep bell usable.
+    }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
     <div className="relative">
@@ -44,7 +52,7 @@ function NotificationBell() {
               <div
                 key={n._id}
                 className={`p-2 rounded-lg mb-2 cursor-pointer ${
-                  n.read ? "bg-gray-100" : "bg-blue-100"
+                  n.isRead ? "bg-gray-100" : "bg-blue-100"
                 }`}
                 onClick={() => markAsRead(n._id)}
               >

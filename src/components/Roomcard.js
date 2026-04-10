@@ -43,19 +43,19 @@ function RoomCard({ room, setRooms }) {
         return;
       }
 
-      await api.post(
+      const response = await api.post(
         "/reviews",
         { roomId: room._id, rating: reviewRating, comment: reviewComment }
       );
 
-      setReviewSuccess("Review submitted! Pending approval.");
+      setReviewSuccess(response?.data?.message || "Review submitted successfully.");
       setReviewRating(0);
       setReviewComment("");
 
       const res = await api.get(`/reviews/${room._id}`);
       setReviews(res.data.reviews || []);
     } catch (err) {
-      setReviewError("Failed to submit review");
+      setReviewError(err?.response?.data?.message || "Failed to submit review");
     }
 
     // removed setReviewSubmitting
@@ -70,10 +70,13 @@ function RoomCard({ room, setRooms }) {
     if (!room?._id || !token) return;
 
     api
-      .get("/users/favorites")
+      .get("/favorites")
       .then((res) => {
-        const favs = res.data.data || [];
-        setIsFavorite(favs.some((f) => f._id === room._id));
+        const favs = res.data.favorites || [];
+        setIsFavorite(favs.some((f) => f.room && f.room._id === room._id));
+      })
+      .catch(() => {
+        setIsFavorite(false);
       });
   }, [room?._id]);
 
@@ -81,21 +84,17 @@ function RoomCard({ room, setRooms }) {
     const token = localStorage.getItem("token");
     if (!token) return alert("Login first");
 
-    // removed setFavoriteLoading
-
     try {
       if (isFavorite) {
-        await api.delete(`/users/remove-favorite/${room._id}`);
+        await api.delete(`/favorites/${room._id}`);
         setIsFavorite(false);
       } else {
-        await api.post(`/users/add-favorite/${room._id}`);
+        await api.post("/favorites", { roomId: room._id });
         setIsFavorite(true);
       }
     } catch {
       alert("Failed");
     }
-
-    // removed setFavoriteLoading
   };
 
   // ================= OTHER STATE =================
@@ -136,7 +135,10 @@ function RoomCard({ room, setRooms }) {
           alt=""
           className="w-full h-full object-cover"
           onLoad={() => setIsLoading(false)}
-          onError={() => setImageError(true)}
+          onError={() => {
+            setImageError(true);
+            setIsLoading(false);
+          }}
         />
 
         {/* Status */}

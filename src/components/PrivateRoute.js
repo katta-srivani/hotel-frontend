@@ -1,16 +1,21 @@
-// src/components/PrivateRoute.jsx
-import React, { useContext } from "react";
+// src/components/PrivateRoute.js
+import React from "react";
 import { Navigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 
-function PrivateRoute({ children, adminOnly = false }) {
-  const { user, loading } = useContext(AuthContext);
+const PrivateRoute = ({ children, adminOnly = false }) => {
+  const { isAuthenticated, user, loading } = React.useContext(AuthContext);
 
-  if (loading) return <div>Loading...</div>;
-  if (!user) return <Navigate to="/login" />;
-  if (adminOnly && user.role !== "admin") return <Navigate to="/" />;
+  // Wait until auth is checked
+  if (loading) return <div>Loading...</div>; // you can replace with spinner
+
+  // Not logged in
+  if (!isAuthenticated) return <Navigate to="/login" />;
+
+  // Admin only
+  if (adminOnly && user?.role !== "admin") return <Navigate to="/" />;
 
   return children;
-}
+};
 
 export default PrivateRoute;

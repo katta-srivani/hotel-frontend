@@ -41,6 +41,12 @@ function Billing() {
       <div className="mb-2">Room: <span className="font-semibold">{booking.room?.title || booking.room}</span></div>
       <div className="mb-2">Check-in: {new Date(booking.fromDate).toLocaleDateString()}</div>
       <div className="mb-2">Check-out: {new Date(booking.toDate).toLocaleDateString()}</div>
+      {typeof booking.grossAmount === 'number' && (
+        <div className="mb-2">Initial Amount: <span className="font-semibold">₹{booking.grossAmount}</span></div>
+      )}
+      {typeof booking.discountAmount === 'number' && booking.discountAmount > 0 && (
+        <div className="mb-2 text-green-700">Offer Discount: <span className="font-semibold">-₹{booking.discountAmount}</span></div>
+      )}
       <div className="mb-2">Total Amount: <span className="font-bold">₹{booking.totalAmount}</span></div>
       <div className="mb-2">Payment Method: {booking.paymentMethod}</div>
       <div className="mb-2">Status: <span className="font-semibold text-green-600">{booking.status}</span></div>

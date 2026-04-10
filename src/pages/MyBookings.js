@@ -11,7 +11,7 @@ function MyBookings() {
 
   const fetchBookings = async () => {
     try {
-      const res = await api.get("/bookings/my");
+      const res = await api.get("/bookings/my", { params: { includeAll: true } });
       setBookings(res.data.bookings || []);
     } catch (err) {
       toast.error("Failed to load bookings");

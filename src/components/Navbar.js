@@ -6,10 +6,10 @@ import {
   FaMapMarkerAlt, FaBell
 } from "react-icons/fa";
 import api from "../utils/api";
+import { AuthContext } from "../context/AuthContext";
 
 function Navbar() {
-  const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user"));
+  const { user, token, isAuthenticated, logout } = React.useContext(AuthContext);
 
   const [open, setOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -22,9 +22,7 @@ function Navbar() {
   const bellRef = useRef();
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    window.location.reload();
+    logout();
   };
 
   // ✅ Fetch notifications
@@ -64,7 +62,8 @@ function Navbar() {
   }, []);
 
   const getInitial = () => {
-    return user?.name ? user.name.charAt(0).toUpperCase() : "U";
+    const displayName = user?.firstName || user?.name || "";
+    return displayName ? displayName.charAt(0).toUpperCase() : "U";
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -94,7 +93,7 @@ function Navbar() {
           {/* RIGHT */}
           <div className="flex items-center gap-4">
 
-            {!token ? (
+            {!isAuthenticated ? (
               <div className="flex gap-3">
                 <Link to="/login" className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg">
                   Log In
@@ -159,7 +158,7 @@ function Navbar() {
                   {open && (
                     <div className="absolute right-0 mt-3 w-72 bg-white rounded-xl shadow-xl border">
                       <div className="p-4 bg-gray-50 border-b">
-                        <p className="font-semibold">{user?.name}</p>
+                        <p className="font-semibold">{user?.firstName || user?.name || 'User'}</p>
                         <p className="text-sm text-gray-500">{user?.email}</p>
                       </div>
 

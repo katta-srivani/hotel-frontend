@@ -1,9 +1,19 @@
-// src/pages/RoomDetails.jsx
 import React, { useEffect, useState, useContext } from "react";
 import { useParams } from "react-router-dom";
 import api from "../utils/api";
 import toast from "react-hot-toast";
 import { AuthContext } from "../context/AuthContext";
+
+
+function getDatesInRange(start, end) {
+  const arr = [];
+  let dt = new Date(start);
+  while (dt <= end) {
+    arr.push(new Date(dt));
+    dt.setDate(dt.getDate() + 1);
+  }
+  return arr;
+}
 
 function RoomDetails() {
   const { id } = useParams();
@@ -42,12 +52,12 @@ function RoomDetails() {
     }
     setSubmittingReview(true);
     try {
-      await api.post("/reviews", {
+      const res = await api.post("/reviews", {
         roomId: id,
         rating: newRating,
         comment: newComment,
       });
-      toast.success("Review submitted!");
+      toast.success(res?.data?.message || "Review submitted!");
       setNewRating(5);
       setNewComment("");
       setRefreshReviews((v) => !v);
@@ -55,6 +65,8 @@ function RoomDetails() {
       toast.error(
         err?.response?.data?.message || "Failed to submit review"
       );
+      // Log backend error details for debugging
+      console.error("Review submit error:", err?.response?.data || err);
     } finally {
       setSubmittingReview(false);
     }
@@ -206,6 +218,27 @@ function RoomDetails() {
       toast.error("Booking failed");
     }
   };
+
+  // Booked date ranges for disabling in date picker
+  const [bookedRanges, setBookedRanges] = useState([]);
+
+  // Fetch all approved bookings for this room
+  useEffect(() => {
+    if (!id) return;
+    api.get(`/bookings/room/${id}`)
+      .then(res => {
+        setBookedRanges(res.data.bookings || []);
+      })
+      .catch(() => {
+        setBookedRanges([]);
+      });
+  }, [id]);
+
+  // Compute all booked dates for disabling in the date picker
+  const bookedDates = bookedRanges.flatMap(b => {
+    if (!b.fromDate || !b.toDate) return [];
+    return getDatesInRange(new Date(b.fromDate), new Date(b.toDate));
+  });
 
   if (loading) return <p className="p-5">Loading...</p>;
   if (!room) return <p className="p-5">Room not found</p>;
@@ -419,9 +452,9 @@ function RoomDetails() {
                 <input
                   type="date"
                   className="border rounded px-3 py-2"
-                  value={checkInDate}
                   min={new Date().toISOString().slice(0, 10)}
-                  onChange={(e) => setCheckInDate(e.target.value)}
+                  value={checkInDate}
+                  onChange={e => setCheckInDate(e.target.value)}
                   required
                 />
               </label>
@@ -430,9 +463,9 @@ function RoomDetails() {
                 <input
                   type="date"
                   className="border rounded px-3 py-2"
-                  value={checkOutDate}
                   min={checkInDate || new Date().toISOString().slice(0, 10)}
-                  onChange={(e) => setCheckOutDate(e.target.value)}
+                  value={checkOutDate}
+                  onChange={e => setCheckOutDate(e.target.value)}
                   required
                 />
               </label>

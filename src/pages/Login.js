@@ -7,24 +7,38 @@ import { AuthContext } from "../context/AuthContext";
 
 function Login() {
   const navigate = useNavigate();
-  const { login } = useContext(AuthContext);
+  const { login, isAuthenticated } = useContext(AuthContext);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
+
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !password) {
+      toast.error("Email and password are required");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const result = await login(email, password); // wait for async login
+      const result = await login(cleanEmail, password);
 
       if (result.success) {
         toast.success("Login successful! 🎉");
-        // Redirect to home page, replacing history
         navigate("/", { replace: true });
+        return;
       } else {
         toast.error(result.message || "Invalid email or password");
       }
@@ -113,8 +127,9 @@ function Login() {
               className={`w-full py-2 rounded-lg font-semibold text-white transition transform ${
                 loading
                   ? "bg-blue-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-blue-600 to-blue-800 hover:scale-105 shadow-lg"
+                  : "bg-gradient-to-r from-blue-600 to-blue-800 bg-blue-700 hover:scale-105 shadow-lg"
               }`}
+              style={{ background: loading ? undefined : 'linear-gradient(to right, #2563eb, #1e40af), #2563eb' }}
             >
               {loading ? "Signing in..." : "Sign In"}
             </button>

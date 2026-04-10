@@ -30,6 +30,8 @@ function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [unapprovedReviews, setUnapprovedReviews] = useState([]);
   const [offers, setOffers] = useState([]);
+  const [offerEmailStats, setOfferEmailStats] = useState([]);
+  const [offerStatusMessage, setOfferStatusMessage] = useState('');
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [editOffer, setEditOffer] = useState(null);
   const initialOfferState = {
@@ -54,8 +56,8 @@ function AdminDashboard() {
     roomsBookedToday: 0,
     roomsNotBookedToday: 0,
     paymentPending: 0,
-    paymentCOD: 0,
-    paymentRazorpay: 0
+    paymentCash: 0,
+    paymentOnline: 0
   });
 
   const [analytics, setAnalytics] = useState({
@@ -123,8 +125,8 @@ function AdminDashboard() {
         const roomsNotBookedToday = roomsData.length - roomsBookedToday;
         // Payment status tracking
         const paymentPending = bookingsData.filter(b => (b.paymentStatus || '').toLowerCase() === 'pending').length;
-        const paymentCOD = bookingsData.filter(b => (b.paymentMethod || '').toLowerCase() === 'cod').length;
-        const paymentRazorpay = bookingsData.filter(b => (b.paymentMethod || '').toLowerCase() === 'razorpay').length;
+        const paymentCash = bookingsData.filter(b => (b.paymentMethod || '').toLowerCase() === 'cash').length;
+        const paymentOnline = bookingsData.filter(b => (b.paymentMethod || '').toLowerCase() === 'online').length;
         setStats({
           totalRooms: roomsData.length,
           totalBookings: bookingsData.length,
@@ -134,8 +136,8 @@ function AdminDashboard() {
           roomsBookedToday,
           roomsNotBookedToday,
           paymentPending,
-          paymentCOD,
-          paymentRazorpay
+          paymentCash,
+          paymentOnline
         });
       } else if (activeTab === 'analytics') {
         const query = `?from=${dateRange.from || ''}&to=${dateRange.to || ''}`;
@@ -147,11 +149,15 @@ function AdminDashboard() {
           revenuePerDay: res.data?.revenuePerDay || [],
         });
       } else if (activeTab === 'reviews') {
-        const res = await api.get('/reviews/admin/unapproved');
+        const res = await api.get('/reviews/admin/reviews');
         setUnapprovedReviews(res.data?.reviews || []);
       } else if (activeTab === 'offers') {
-        const res = await api.get('/offers');
-        setOffers(res.data?.offers || []);
+        const [offersRes, statsRes] = await Promise.all([
+          api.get('/offers'),
+          api.get('/offers/admin/email-stats'),
+        ]);
+        setOffers(offersRes.data?.offers || []);
+        setOfferEmailStats(statsRes.data?.stats || []);
       }
 
     } catch (err) {
@@ -262,9 +268,14 @@ function AdminDashboard() {
       setRoomFormLoading(false);
     };
 
-    const handleApproveReview = async (id) => {
-    await api.put(`/reviews/admin/approve/${id}`);
-    setUnapprovedReviews(prev => prev.filter(r => r?._id !== id));
+  const handleApproveReview = async (id) => {
+    try {
+      await api.put(`/reviews/admin/approve/${id}`);
+      setUnapprovedReviews((prev) => prev.filter((r) => r?._id !== id));
+      toast.success('Review approved');
+    } catch (err) {
+      toast.error('Failed to approve review');
+    }
   };
 
   const handleDeleteReview = async (id) => {
@@ -291,6 +302,16 @@ function AdminDashboard() {
 
   const handleEditOffer = (offer) => {
     setEditOffer(offer);
+    setOfferForm({
+      code: offer.code || '',
+      discountType: offer.discountType || 'percentage',
+      discountValue: offer.discountValue ?? '',
+      minAmount: offer.minAmount ?? '',
+      maxDiscount: offer.maxDiscount ?? '',
+      expiryDate: offer.expiryDate ? new Date(offer.expiryDate).toISOString().slice(0, 10) : '',
+      usageLimit: offer.usageLimit ?? 100,
+      isActive: offer.isActive ?? true,
+    });
     setShowOfferModal(true);
   };
 
@@ -333,9 +354,12 @@ function AdminDashboard() {
       } else {
         res = await api.post('/offers', payload);
         setOffers((prev) => [res.data.offer, ...prev]);
-        toast.success('Offer added');
+        const msg = res?.data?.message || 'Offer added and emails are being sent to registered users';
+        setOfferStatusMessage(msg);
+        toast.success(msg);
       }
       setShowOfferModal(false);
+      fetchData();
     } catch (err) {
       toast.error('Failed to save offer');
     }
@@ -395,8 +419,8 @@ function AdminDashboard() {
                   return (
                     <tr key={room._id} className="border-b hover:bg-gray-50">
                       <td className="p-2">{room.title}</td>
-                      <td className="p-2">{room.type}</td>
-                      <td className="p-2">₹{room.price}</td>
+                      <td className="p-2">{room.roomType}</td>
+                      <td className="p-2">₹{room.pricePerNight}</td>
                       <td className="p-2 font-semibold">
                         {isBookedToday ? <span className="text-green-600">Booked</span> : <span className="text-gray-500">Not Booked</span>}
                       </td>
@@ -503,8 +527,21 @@ function AdminDashboard() {
         <div className="p-6 space-y-6">
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-lg font-bold">Discount Codes / Offers</h2>
-            <button onClick={handleAddOffer} className="bg-blue-600 text-white px-3 py-1 rounded flex items-center gap-1"><FaPlus /> Add Offer</button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={fetchData}
+                className="bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300"
+              >
+                Refresh
+              </button>
+              <button onClick={handleAddOffer} className="bg-blue-600 text-white px-3 py-1 rounded flex items-center gap-1"><FaPlus /> Add Offer</button>
+            </div>
           </div>
+          {offerStatusMessage && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded">
+              {offerStatusMessage}
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="min-w-full bg-white rounded shadow">
               <thead>
@@ -516,12 +553,16 @@ function AdminDashboard() {
                   <th className="p-2 text-left text-xs font-bold">Max Discount</th>
                   <th className="p-2 text-left text-xs font-bold">Expiry</th>
                   <th className="p-2 text-left text-xs font-bold">Usage</th>
+                  <th className="p-2 text-left text-xs font-bold">Email Status</th>
+                  <th className="p-2 text-left text-xs font-bold">Email Sent</th>
                   <th className="p-2 text-left text-xs font-bold">Active</th>
                   <th className="p-2 text-left text-xs font-bold">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {offers.map(offer => (
+                {offers.map(offer => {
+                  const stats = offerEmailStats.find((s) => String(s.offerId) === String(offer._id));
+                  return (
                   <tr key={offer._id} className="border-b hover:bg-gray-50">
                     <td className="p-2 font-mono">{offer.code}</td>
                     <td className="p-2 capitalize">{offer.discountType}</td>
@@ -530,6 +571,8 @@ function AdminDashboard() {
                     <td className="p-2">{offer.maxDiscount ? `₹${offer.maxDiscount}` : '-'}</td>
                     <td className="p-2">{offer.expiryDate ? new Date(offer.expiryDate).toLocaleDateString() : ''}</td>
                     <td className="p-2">{offer.usedCount || 0} / {offer.usageLimit}</td>
+                    <td className="p-2 capitalize">{stats?.status || 'pending'}</td>
+                    <td className="p-2">{(stats?.sentCount ?? 0)} / {(stats?.totalRecipients ?? 0)}</td>
                     <td className="p-2">{offer.isActive ? <span className="text-green-600">Yes</span> : <span className="text-red-600">No</span>}</td>
                     <td className="p-2 flex gap-2">
                       <button
@@ -544,9 +587,9 @@ function AdminDashboard() {
                       ><FaTrash /> Delete</button>
                     </td>
                   </tr>
-                ))}
+                );})}
                 {offers.length === 0 && (
-                  <tr><td colSpan={9} className="p-4 text-center text-gray-500">No offers found.</td></tr>
+                  <tr><td colSpan={11} className="p-4 text-center text-gray-500">No offers found.</td></tr>
                 )}
               </tbody>
             </table>
@@ -692,7 +735,7 @@ function AdminDashboard() {
               <tbody>
                 {users.map(u => (
                   <tr key={u._id} className="border-b hover:bg-gray-50">
-                    <td className="p-2">{u.name}</td>
+                    <td className="p-2">{[u.firstName, u.lastName].filter(Boolean).join(' ') || 'N/A'}</td>
                     <td className="p-2">{u.email}</td>
                     <td className="p-2 capitalize">{u.role}</td>
                     <td className="p-2">
@@ -727,8 +770,8 @@ function AdminDashboard() {
             <Card title="Rooms Not Booked Today" value={stats.roomsNotBookedToday} />
             <Card title="Bookings" value={stats.totalBookings} />
             <Card title="Pending Payments" value={stats.paymentPending} />
-            <Card title="COD Bookings" value={stats.paymentCOD} />
-            <Card title="Razorpay Bookings" value={stats.paymentRazorpay} />
+            <Card title="Cash Bookings" value={stats.paymentCash} />
+            <Card title="Online Bookings" value={stats.paymentOnline} />
             <Card title="Revenue" value={`₹${stats.totalRevenue}`} />
           </div>
         )}
@@ -800,7 +843,7 @@ function AdminDashboard() {
                                 title="Approve"
                                 onClick={async () => {
                                   try {
-                                    await api.put(`/bookings/${b._id}`, { status: 'approved' });
+                                    await api.put(`/bookings/admin/${b._id}/status`, { status: 'approved' });
                                     toast.success('Booking approved');
                                     fetchData();
                                   } catch (err) {
@@ -814,7 +857,7 @@ function AdminDashboard() {
                                 onClick={async () => {
                                   if (!window.confirm('Reject (cancel) this booking?')) return;
                                   try {
-                                    await api.put(`/bookings/${b._id}`, { status: 'cancelled' });
+                                    await api.put(`/bookings/admin/${b._id}/status`, { status: 'cancelled' });
                                     toast.success('Booking cancelled');
                                     fetchData();
                                   } catch (err) {
@@ -892,26 +935,57 @@ function AdminDashboard() {
         {/* REVIEW MODERATION */}
         {activeTab === 'reviews' && (
           <div className="space-y-6">
-            <h2 className="text-lg font-bold mb-2">Pending Reviews</h2>
+            <h2 className="text-lg font-bold mb-2">All Reviews</h2>
             {loading && <p>Loading reviews...</p>}
             {unapprovedReviews.length === 0 && !loading && (
-              <p className="text-gray-500">No pending reviews.</p>
+              <p className="text-gray-500">No reviews found.</p>
             )}
-            <div className="space-y-4">
-              {unapprovedReviews.map((review) => (
-                <div key={review._id} className="bg-white p-4 rounded shadow flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                  <div>
-                    <div className="font-semibold">Room: {review.room?.title || review.room}</div>
-                    <div>By: {review.user?.email || review.user}</div>
-                    <div>Rating: <span className="font-bold">{review.rating}</span></div>
-                    <div className="italic">"{review.comment}"</div>
-                  </div>
-                  <div className="flex gap-2 mt-2 md:mt-0">
-                    <button onClick={() => handleApproveReview(review._id)} className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">Approve</button>
-                    <button onClick={() => handleDeleteReview(review._id)} className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700">Delete</button>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-white rounded shadow">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="p-2 text-left text-xs font-bold">Room</th>
+                    <th className="p-2 text-left text-xs font-bold">User</th>
+                    <th className="p-2 text-left text-xs font-bold">Rating</th>
+                    <th className="p-2 text-left text-xs font-bold">Comment</th>
+                    <th className="p-2 text-left text-xs font-bold">Status</th>
+                    <th className="p-2 text-left text-xs font-bold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unapprovedReviews.map((review) => (
+                    <tr key={review._id} className="border-b hover:bg-gray-50 align-top">
+                      <td className="p-2">{review.room?.title || review.room}</td>
+                      <td className="p-2">{review.user?.email || review.user?.name || review.user}</td>
+                      <td className="p-2 font-semibold">{review.rating}</td>
+                      <td className="p-2 max-w-md break-words">{review.comment}</td>
+                      <td className="p-2">
+                        {review.isApproved ? (
+                          <span className="text-green-600 font-semibold">Approved</span>
+                        ) : (
+                          <span className="text-yellow-600 font-semibold">Pending</span>
+                        )}
+                      </td>
+                      <td className="p-2 flex gap-2">
+                        {!review.isApproved && (
+                          <button
+                            onClick={() => handleApproveReview(review._id)}
+                            className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                          >
+                            Approve
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteReview(review._id)}
+                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
