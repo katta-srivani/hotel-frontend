@@ -22,7 +22,7 @@ function Home() {
     { value: "gym", label: "Gym" },
   ];
 
-  const [_, setRooms] = useState([]); // removed unused 'rooms' variable
+
   const [filteredRooms, setFilteredRooms] = useState([]);
   const [sortOrder, setSortOrder] = useState(""); // "low-high" or "high-low"
   const [loading, setLoading] = useState(false);

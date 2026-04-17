@@ -1,5 +1,5 @@
 // (removed duplicate React import)
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FaCheckCircle, FaHome, FaBook } from 'react-icons/fa';
 
 import React from 'react';

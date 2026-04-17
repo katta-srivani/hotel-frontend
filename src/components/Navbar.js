@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
-  FaUser, FaSignOutAlt, FaCalendarAlt,
-  FaCog, FaBars, FaTimes, FaChevronDown,
-  FaMapMarkerAlt, FaBell
+  FaUser, FaSignOutAlt, FaMapMarkerAlt, FaBell
 } from "react-icons/fa";
 import api from "../utils/api";
 import { AuthContext } from "../context/AuthContext";
@@ -12,7 +10,7 @@ function Navbar() {
   const { user, token, isAuthenticated, logout } = React.useContext(AuthContext);
 
   const [open, setOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
 
   // 🔔 Notification states
   const [notifications, setNotifications] = useState([]);
@@ -150,14 +148,6 @@ function Navbar() {
   );
 }
 
-const DropdownLink = ({ to, icon, children }) => (
-  <Link
-    to={to}
-    className="flex items-center gap-3 px-5 py-3 hover:bg-gray-100"
-  >
-    {icon}
-    {children}
-  </Link>
-);
+
 
 export default Navbar;
