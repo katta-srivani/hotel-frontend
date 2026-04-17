@@ -10,7 +10,9 @@ function Home() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Dropdown state for amenities
-  const [rooms, setRooms] = useState([]);
+  // Only setRooms is used, so ignore rooms variable
+  // eslint-disable-next-line
+  const [, setRooms] = useState([]);
   const [amenitiesDropdownOpen, setAmenitiesDropdownOpen] = useState(false);
   const amenitiesList = [
     { value: "wifi", label: "WiFi" },
