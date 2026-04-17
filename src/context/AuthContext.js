@@ -67,19 +67,24 @@ export function AuthProvider({ children }) {
     initAuth();
   }, []);
 
-  const register = async (firstName, email, password, phone = '', lastName = '') => {
+  const register = async (firstName, lastName, email, phone = '', password = '') => {
     try {
       const normalizedEmail = String(email || '').trim().toLowerCase();
-      const response = await api.post('/users/register', { firstName, lastName, email: normalizedEmail, password, passwordConfirm: password, phone });
+      const response = await api.post('/users/register', {
+        firstName,
+        lastName,
+        email: normalizedEmail,
+        phone,
+        password,
+        passwordConfirm: password
+      });
       const auth = getAuthPayload(response.data);
 
       if (!auth) {
         return { success: false, message: 'Invalid registration response from server' };
       }
 
-      const { token, user } = auth;
-      persistSession(token, user, setToken, setUser, setIsAuthenticated);
-
+      // Do NOT persist session on registration. Only return success.
       return { success: true };
     } catch (error) {
       const message =
@@ -93,10 +98,13 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const normalizedEmail = String(email || '').trim().toLowerCase();
+      console.log('[LOGIN] Sending:', { email: normalizedEmail, password: password ? '***' : '' });
       const response = await api.post('/users/login', { email: normalizedEmail, password });
+      console.log('[LOGIN] Response:', response.data);
       const auth = getAuthPayload(response.data);
 
       if (!auth) {
+        console.log('[LOGIN] Invalid login response from server:', response.data);
         return { success: false, message: 'Invalid login response from server' };
       }
 
@@ -105,6 +113,7 @@ export function AuthProvider({ children }) {
 
       return { success: true };
     } catch (error) {
+      console.log('[LOGIN] Error:', error, error?.response?.data);
       const message =
         error.code === 'ECONNABORTED'
           ? 'Server took too long to respond. Please try again.'

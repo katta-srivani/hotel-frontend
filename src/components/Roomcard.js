@@ -1,83 +1,57 @@
 // src/components/RoomCard.jsx
 
+
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import api from "../utils/api";
-import { FaStar, FaTimes, FaHeart } from "react-icons/fa";
-import ReviewList from "./ReviewList";
+import { FaHeart, FaStar, FaRegStar } from "react-icons/fa";
 
-function RoomCard({ room, setRooms }) {
-  const navigate = useNavigate();
 
-  // ================= REVIEW STATE =================
-  const [reviews, setReviews] = useState([]);
-  const [reviewsLoading, setReviewsLoading] = useState(true);
-  const [reviewRating, setReviewRating] = useState(0);
-  const [reviewComment, setReviewComment] = useState("");
-  // Removed unused: reviewSubmitting, setReviewSubmitting
-  const [reviewError, setReviewError] = useState("");
-  const [reviewSuccess, setReviewSuccess] = useState("");
 
+function RoomCard({ room }) {
+  // ================= WISHLIST =================
+  const [isWishlisted, setIsWishlisted] = useState(false);
   useEffect(() => {
-    if (!room?._id) return;
-    setReviewsLoading(true);
-    api
-      .get(`/reviews/${room._id}`)
+    const token = localStorage.getItem("token");
+    if (!room?._id || !token) return;
+    api.get("/favorites")
       .then((res) => {
-        setReviews(res.data.reviews || []);
-        setReviewsLoading(false);
+        const favs = res.data.favorites || [];
+        setIsWishlisted(favs.some((w) => w.room && w.room._id === room._id));
       })
-      .catch(() => setReviewsLoading(false));
+      .catch(() => setIsWishlisted(false));
   }, [room?._id]);
 
-  const handleReviewSubmit = async (e) => {
-    e.preventDefault();
-    setReviewError("");
-    setReviewSuccess("");
-    // removed setReviewSubmitting
-
+  const handleToggleWishlist = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return alert("Login first");
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setReviewError("Please login first");
-        return;
+      if (isWishlisted) {
+        await api.delete(`/favorites/${room._id}`);
+        setIsWishlisted(false);
+      } else {
+        await api.post("/favorites", { roomId: room._id });
+        setIsWishlisted(true);
       }
-
-      const response = await api.post(
-        "/reviews",
-        { roomId: room._id, rating: reviewRating, comment: reviewComment }
-      );
-
-      setReviewSuccess(response?.data?.message || "Review submitted successfully.");
-      setReviewRating(0);
-      setReviewComment("");
-
-      const res = await api.get(`/reviews/${room._id}`);
-      setReviews(res.data.reviews || []);
-    } catch (err) {
-      setReviewError(err?.response?.data?.message || "Failed to submit review");
+    } catch {
+      alert("Failed");
     }
-
-    // removed setReviewSubmitting
   };
-
   // ================= FAVORITES =================
   const [isFavorite, setIsFavorite] = useState(false);
-  // Removed unused: favoriteLoading, setFavoriteLoading
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!room?._id || !token) return;
 
-    api
-      .get("/favorites")
+    api.get("/favorites")
       .then((res) => {
         const favs = res.data.favorites || [];
-        setIsFavorite(favs.some((f) => f.room && f.room._id === room._id));
+        setIsFavorite(
+          favs.some((f) => f.room && f.room._id === room._id)
+        );
       })
-      .catch(() => {
-        setIsFavorite(false);
-      });
+      .catch(() => setIsFavorite(false));
   }, [room?._id]);
 
   const handleToggleFavorite = async () => {
@@ -97,43 +71,39 @@ function RoomCard({ room, setRooms }) {
     }
   };
 
-  // ================= OTHER STATE =================
+  // ================= IMAGE =================
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [showBookingCard, setShowBookingCard] = useState(false);
 
-  const defaultImage =
-    "https://via.placeholder.com/400x300/e5e7eb/999?text=Room";
 
-  const imageUrl =
-    room?.imageUrls?.[0] && !imageError
-      ? room.imageUrls[0]
-      : defaultImage;
+  // Special images for beach view and favorites
+  const beachImage = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80";
+  const favImage = "https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=600&q=80";
+  const defaultImage = "https://via.placeholder.com/400x300/e5e7eb/999?text=Room";
+
+  let imageUrl = defaultImage;
+  if (room?.imageUrls?.[0] && !imageError) {
+    imageUrl = room.imageUrls[0];
+  } else if ((room?.view || room?.category || "").toLowerCase().includes("beach")) {
+    imageUrl = beachImage;
+  } else if (room?.isFavorite || isFavorite) {
+    imageUrl = favImage;
+  }
 
   // ================= UI =================
   return (
-    <div className="bg-white rounded-2xl shadow hover:shadow-lg transition overflow-hidden flex flex-col relative">
+    <div className="bg-white rounded-3xl shadow-md hover:shadow-xl transition-all flex flex-col border border-gray-100 group hover:-translate-y-1 duration-200">
 
       {/* IMAGE */}
-      <div className="relative h-64 bg-gray-100 overflow-hidden">
+      <div className="relative h-64 bg-gray-100">
         {isLoading && (
           <div className="absolute inset-0 animate-pulse bg-gray-200" />
         )}
 
-        {/* Favorite */}
-        <button
-          onClick={handleToggleFavorite}
-          className="absolute top-4 left-1/2 -translate-x-1/2 bg-white p-2 rounded-full shadow"
-        >
-          <FaHeart
-            className={isFavorite ? "text-red-500" : "text-gray-400"}
-          />
-        </button>
-
         <img
           src={imageUrl}
-          alt=""
-          className="w-full h-full object-cover"
+          alt="Room"
+          className="w-full h-full object-cover rounded-2xl"
           onLoad={() => setIsLoading(false)}
           onError={() => {
             setImageError(true);
@@ -141,154 +111,57 @@ function RoomCard({ room, setRooms }) {
           }}
         />
 
-        {/* Status */}
-        <div className={`absolute top-3 right-3 px-3 py-1 text-xs rounded-full text-white ${
-          room?.isCurrentlyBooked ? "bg-red-500" : "bg-green-500"
-        }`}>
-          {room?.isCurrentlyBooked ? "Booked" : "Available"}
-        </div>
+
+        {/* Favorite */}
+        <button
+          onClick={handleToggleFavorite}
+          className="absolute top-4 right-4 bg-white p-2 rounded-full shadow"
+        >
+          <FaHeart
+            className={isFavorite ? "text-rose-500" : "text-gray-300"}
+          />
+        </button>
+
+        {/* Wishlist */}
+        <button
+          onClick={handleToggleWishlist}
+          className="absolute top-4 left-4 bg-white p-2 rounded-full shadow"
+          title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+        >
+          {isWishlisted ? (
+            <FaStar className="text-yellow-400" />
+          ) : (
+            <FaRegStar className="text-gray-300" />
+          )}
+        </button>
 
         {/* Rating */}
-        <div className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-xs flex items-center gap-1">
-          <FaStar className="text-pink-500" />
+        <div className="absolute bottom-4 right-4 bg-white px-3 py-1 rounded-full text-xs flex items-center gap-1 shadow">
+          <FaStar className="text-rose-500" />
           {room?.rating || 4.5}
         </div>
       </div>
 
       {/* CONTENT */}
-      <div className="p-4 space-y-3">
-
-        <h3 className="font-semibold text-sm">
+      <div className="p-5">
+        <h3 className="font-semibold text-gray-900 truncate">
           {room?.title}
         </h3>
 
-        <p className="text-gray-500 text-xs">
-          {room?.roomType}
-        </p>
+        <div className="flex justify-between items-center mt-2">
+          <span className="text-lg font-bold">
+            ₹{room?.pricePerNight}
+            <span className="text-sm text-gray-500"> / night</span>
+          </span>
 
-        <div className="flex justify-between text-sm font-medium">
-          <span>₹{room?.pricePerNight} / night</span>
-          <span>⭐ {room?.rating || 4.5}</span>
-        </div>
-
-        {/* BUTTONS */}
-        <div className="flex gap-2">
           <Link
             to={`/rooms/${room?._id}`}
-            className="flex-1 text-center bg-gray-100 py-2 rounded-lg text-sm"
+            className="px-4 py-2 rounded-xl bg-rose-500 text-white text-sm"
           >
-            Details
+            View
           </Link>
-
-          <button
-            disabled={room?.isCurrentlyBooked}
-            onClick={() => {
-              if (room?.isCurrentlyBooked) return;
-              // Prepare booking data for Checkout
-              const bookingData = {
-                roomId: room?._id,
-                checkInDate: new Date().toISOString().slice(0, 10), // default today
-                checkOutDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10), // default tomorrow
-                numberOfRooms: 1
-              };
-              sessionStorage.setItem('bookingData', JSON.stringify(bookingData));
-              navigate('/checkout');
-            }}
-            className={`flex-1 py-2 rounded-lg text-sm text-white ${room?.isCurrentlyBooked ? 'bg-gray-400 cursor-not-allowed' : 'bg-pink-500'}`}
-          >
-            {room?.isCurrentlyBooked ? 'Booked' : 'Book'}
-          </button>
         </div>
-
-        {/* REVIEWS */}
-        <div className="pt-3 border-t">
-          <ReviewList reviews={reviews} loading={reviewsLoading} />
-        </div>
-
-        {/* ADD REVIEW */}
-        <form onSubmit={handleReviewSubmit} className="space-y-2">
-          <div className="flex gap-1">
-            {[1,2,3,4,5].map(star => (
-              <FaStar
-                key={star}
-                onClick={() => setReviewRating(star)}
-                className={`cursor-pointer ${
-                  reviewRating >= star ? "text-yellow-400" : "text-gray-300"
-                }`}
-              />
-            ))}
-          </div>
-
-          <textarea
-            className="w-full border rounded-lg p-2 text-sm"
-            value={reviewComment}
-            onChange={(e)=>setReviewComment(e.target.value)}
-            placeholder="Write review..."
-          />
-
-          <button className="w-full bg-green-500 text-white py-2 rounded-lg text-sm">
-            Submit
-          </button>
-
-          {reviewError && <p className="text-red-500 text-xs">{reviewError}</p>}
-          {reviewSuccess && <p className="text-green-500 text-xs">{reviewSuccess}</p>}
-        </form>
       </div>
-
-      {/* BOOKING MODAL */}
-      {showBookingCard && (
-        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-          <div className="bg-white p-5 rounded-xl w-[90%] max-w-md relative space-y-3">
-
-            <FaTimes
-              onClick={() => setShowBookingCard(false)}
-              className="absolute top-3 right-3 cursor-pointer"
-            />
-
-            <h3 className="font-semibold">{room?.title}</h3>
-
-
-            <button
-              className="w-full bg-green-500 text-white py-2 rounded-lg"
-              onClick={() => {
-                setShowBookingCard(false);
-                // Prepare booking data for Checkout (pay at hotel)
-                const bookingData = {
-                  roomId: room?._id,
-                  checkInDate: new Date().toISOString().slice(0, 10),
-                  checkOutDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
-                  numberOfRooms: 1,
-                  payMode: 'hotel'
-                };
-                sessionStorage.setItem('bookingData', JSON.stringify(bookingData));
-                navigate('/checkout');
-              }}
-            >
-              Pay at Hotel
-            </button>
-
-            <button
-              className="w-full bg-pink-500 text-white py-2 rounded-lg"
-              onClick={() => {
-                setShowBookingCard(false);
-                // Prepare booking data for Checkout (pay online)
-                const bookingData = {
-                  roomId: room?._id,
-                  checkInDate: new Date().toISOString().slice(0, 10),
-                  checkOutDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
-                  numberOfRooms: 1,
-                  payMode: 'online'
-                };
-                sessionStorage.setItem('bookingData', JSON.stringify(bookingData));
-                navigate('/checkout');
-              }}
-            >
-              Pay Online
-            </button>
-
-          </div>
-        </div>
-      )}
     </div>
   );
 }

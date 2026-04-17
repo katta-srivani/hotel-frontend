@@ -25,6 +25,7 @@ function Profile() {
     state: user?.state || '',
     zipCode: user?.zipCode || '',
     country: user?.country || '',
+    amenities: user?.amenities || [],
   });
 
   const handleChange = (e) => {
@@ -46,233 +47,208 @@ function Profile() {
     }
   };
 
+  // User Activity Log (simple localStorage-based)
+  const [activityLog, setActivityLog] = useState([]);
+  React.useEffect(() => {
+    const log = JSON.parse(localStorage.getItem("activityLog") || "[]");
+    setActivityLog(log.slice(-10).reverse()); // show last 10, newest first
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gray-100 py-10 px-4">
-      <div className="max-w-3xl mx-auto">
+  <div className="min-h-screen bg-gray-100 py-10 px-4">
+    <div className="max-w-5xl mx-auto space-y-8">
 
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl shadow-lg p-6 text-white mb-6">
-          <div className="flex justify-between items-center flex-wrap gap-4">
-            
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 flex items-center justify-center rounded-full bg-white/20 text-2xl">
-                <FaUser />
-              </div>
+      {/* Profile Card */}
+      <div className="bg-white rounded-3xl shadow-lg p-8 flex flex-col md:flex-row items-center justify-between gap-6">
 
-              <div>
-                <h2 className="text-xl font-bold">{user?.name}</h2>
-                <p className="text-white/70 text-sm">{user?.email}</p>
-                {user?.role === 'admin' && (
-                  <span className="bg-yellow-400 text-black text-xs px-2 py-1 rounded mt-1 inline-block">
-                    Admin
-                  </span>
-                )}
-              </div>
-            </div>
+        <div className="flex items-center gap-6">
+          <img
+            src={`https://ui-avatars.com/api/?name=${user?.name}`}
+            alt="profile"
+            className="w-24 h-24 rounded-full object-cover shadow-md"
+          />
 
-            <button
-              onClick={() => setIsEditing(!isEditing)}
-              className={`px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition ${
-                isEditing
-                  ? 'bg-red-500 hover:bg-red-600'
-                  : 'bg-white/30 hover:bg-white/40'
-              }`}
-            >
-              {isEditing ? (
-                <>
-                  <FaSave /> Cancel
-                </>
-              ) : (
-                <>
-                  <FaEdit /> Edit
-                </>
-              )}
-            </button>
-          </div>
-        </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">{user?.name}</h2>
+            <p className="text-gray-500">{user?.email}</p>
 
-
-        {/* Form */}
-        <div className="bg-white rounded-2xl shadow p-6">
-          <h3 className="font-bold text-lg mb-4">Personal Information</h3>
-
-          {/* Preferred Amenities Dropdown */}
-          <div className="mb-6">
-            <label className="text-sm text-gray-500 font-semibold mb-2 block">Preferred Amenities</label>
-            <select
-              multiple
-              disabled={!isEditing}
-              value={formData.amenities || []}
-              onChange={e => {
-                const options = Array.from(e.target.selectedOptions, o => o.value);
-                setFormData(prev => ({ ...prev, amenities: options }));
-              }}
-              className="border rounded-lg px-3 py-2 w-full bg-gray-100"
-            >
-              <option value="wifi">WiFi</option>
-              <option value="pool">Pool</option>
-              <option value="breakfast">Breakfast</option>
-              <option value="parking">Parking</option>
-              <option value="gym">Gym</option>
-              <option value="spa">Spa</option>
-            </select>
-            {!isEditing && formData.amenities && formData.amenities.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {formData.amenities.map(a => (
-                  <span key={a} className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs">{a.charAt(0).toUpperCase() + a.slice(1)}</span>
-                ))}
-              </div>
+            {user?.role === 'admin' && (
+              <span className="bg-yellow-400 text-xs px-2 py-1 rounded mt-1 inline-block">
+                Admin
+              </span>
             )}
           </div>
+        </div>
 
-          {/* Name + Phone */}
-          <div className="grid md:grid-cols-2 gap-4 mb-6">
-            
-            <div>
-              <label className="text-sm text-gray-500">Full Name</label>
-              <div className="flex items-center bg-gray-100 rounded-lg px-3">
-                <FaUser className="text-blue-600 mr-2" />
-                <input
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className="bg-transparent w-full py-2 outline-none"
-                />
-              </div>
+        <button
+          onClick={() => setIsEditing(!isEditing)}
+          className={`px-5 py-2 rounded-full font-medium transition shadow
+            ${isEditing
+              ? 'bg-red-500 text-white'
+              : 'bg-black text-white hover:bg-gray-800'}`}
+        >
+          {isEditing ? 'Cancel' : 'Edit Profile'}
+        </button>
+      </div>
+
+      {/* Stats Section */}
+            {/* User Activity Log */}
+            <div className="bg-white rounded-3xl shadow p-8">
+              <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+              {activityLog.length === 0 ? (
+                <div className="text-gray-400">No recent activity found.</div>
+              ) : (
+                <ul className="list-disc pl-6 space-y-1 text-gray-700 text-sm">
+                  {activityLog.map((item, idx) => (
+                    <li key={idx}>{item}</li>
+                  ))}
+                </ul>
+              )}
             </div>
-
-            <div>
-              <label className="text-sm text-gray-500">Phone</label>
-              <div className="flex items-center bg-gray-100 rounded-lg px-3">
-                <FaPhone className="text-blue-600 mr-2" />
-                <input
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className="bg-transparent w-full py-2 outline-none"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Address Section */}
-          <h4 className="font-semibold text-blue-600 mb-3">
-            Address Information
-          </h4>
-
-          <div className="grid gap-4 mb-6">
-
-            <div>
-              <label className="text-sm text-gray-500">Street Address</label>
-              <div className="flex items-center bg-gray-100 rounded-lg px-3">
-                <FaHome className="text-blue-600 mr-2" />
-                <input
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className="bg-transparent w-full py-2 outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <input
-                name="city"
-                placeholder="City"
-                value={formData.city}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className="bg-gray-100 rounded-lg px-3 py-2 outline-none"
-              />
-              <input
-                name="state"
-                placeholder="State"
-                value={formData.state}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className="bg-gray-100 rounded-lg px-3 py-2 outline-none"
-              />
-              <input
-                name="zipCode"
-                placeholder="Zip Code"
-                value={formData.zipCode}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className="bg-gray-100 rounded-lg px-3 py-2 outline-none"
-              />
-              <div className="flex items-center bg-gray-100 rounded-lg px-3">
-                <FaGlobe className="text-blue-600 mr-2" />
-                <input
-                  name="country"
-                  value={formData.country}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className="bg-transparent w-full py-2 outline-none"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Email */}
-          <div className="mb-6 opacity-60">
-            <label className="text-sm text-gray-500">
-              Email (Cannot change)
-            </label>
-            <div className="flex items-center bg-gray-100 rounded-lg px-3">
-              <FaEnvelope className="text-blue-600 mr-2" />
-              <input
-                value={user?.email}
-                disabled
-                className="bg-transparent w-full py-2 outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Buttons */}
-          {isEditing && (
-            <div className="flex gap-4 border-t pt-4">
-              <button
-                onClick={handleSave}
-                disabled={loading}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold"
-              >
-                {loading ? 'Saving...' : 'Save Changes'}
-              </button>
-
-              <button
-                onClick={() => setIsEditing(false)}
-                className="flex-1 border border-gray-300 py-2 rounded-lg"
-              >
-                Cancel
-              </button>
-            </div>
-          )}
-
-          {!isEditing && (
-            <div className="bg-blue-100 text-sm text-gray-600 p-3 rounded-lg mt-4">
-              Click <strong>Edit</strong> to update your profile.
-            </div>
-          )}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl p-6 shadow text-center">
+          <p className="text-xl font-bold">12</p>
+          <p className="text-gray-500 text-sm">Bookings</p>
+        </div>
+        <div className="bg-white rounded-2xl p-6 shadow text-center">
+          <p className="text-xl font-bold">5</p>
+          <p className="text-gray-500 text-sm">Favorites</p>
+        </div>
+        <div className="bg-white rounded-2xl p-6 shadow text-center">
+          <p className="text-xl font-bold">3</p>
+          <p className="text-gray-500 text-sm">Reviews</p>
         </div>
       </div>
 
-      {/* My Favorites Section */}
-      <div className="bg-white rounded-2xl shadow p-6 mt-8">
-        <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-          <span className="text-red-500">❤</span> My Favorites
-        </h3>
-        <a
-          href="/favorites"
-          className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-        >
-          View Favorite Rooms
-        </a>
+      {/* Personal Info */}
+      <div className="bg-white rounded-3xl shadow p-8">
+        <h3 className="text-lg font-semibold mb-6">Personal Information</h3>
+
+        <div className="grid md:grid-cols-2 gap-6">
+
+          <input
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            disabled={!isEditing}
+            placeholder="Full Name"
+            className="border rounded-xl px-4 py-3 bg-gray-50"
+          />
+
+          <input
+            name="phone"
+            value={formData.phone}
+            onChange={handleChange}
+            disabled={!isEditing}
+            placeholder="Phone"
+            className="border rounded-xl px-4 py-3 bg-gray-50"
+          />
+
+          <input
+            name="city"
+            value={formData.city}
+            onChange={handleChange}
+            disabled={!isEditing}
+            placeholder="City"
+            className="border rounded-xl px-4 py-3 bg-gray-50"
+          />
+
+          <input
+            name="state"
+            value={formData.state}
+            onChange={handleChange}
+            disabled={!isEditing}
+            placeholder="State"
+            className="border rounded-xl px-4 py-3 bg-gray-50"
+          />
+
+          <input
+            name="zipCode"
+            value={formData.zipCode}
+            onChange={handleChange}
+            disabled={!isEditing}
+            placeholder="Zip Code"
+            className="border rounded-xl px-4 py-3 bg-gray-50"
+          />
+
+          <input
+            name="country"
+            value={formData.country}
+            onChange={handleChange}
+            disabled={!isEditing}
+            placeholder="Country"
+            className="border rounded-xl px-4 py-3 bg-gray-50"
+          />
+        </div>
+
+        {/* Amenities */}
+        <div className="mt-6">
+          <label className="text-sm text-gray-500">Preferred Amenities</label>
+          <select
+            multiple
+            disabled={!isEditing}
+            value={formData.amenities}
+            onChange={(e) => {
+              const options = Array.from(e.target.selectedOptions, o => o.value);
+              setFormData(prev => ({ ...prev, amenities: options }));
+            }}
+            className="w-full mt-2 border rounded-xl p-3 bg-gray-50"
+          >
+            <option value="wifi">WiFi</option>
+            <option value="pool">Pool</option>
+            <option value="breakfast">Breakfast</option>
+            <option value="parking">Parking</option>
+            <option value="gym">Gym</option>
+            <option value="spa">Spa</option>
+          </select>
+
+          <div className="flex gap-2 mt-3 flex-wrap">
+            {formData.amenities?.map(a => (
+              <span key={a} className="bg-gray-200 px-3 py-1 rounded-full text-xs">
+                {a}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Save Buttons */}
+        {isEditing && (
+          <div className="flex gap-4 mt-6">
+            <button
+              onClick={handleSave}
+              className="bg-black text-white px-6 py-2 rounded-xl"
+            >
+              Save Changes
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Bookings and Favorites */}
+      <div className="bg-white rounded-3xl shadow p-8 flex flex-col md:flex-row gap-4">
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold mb-4">My Bookings</h3>
+          <a
+            href="/mybookings"
+            className="inline-block bg-blue-600 text-white px-5 py-2 rounded-xl mb-2"
+          >
+            View My Bookings
+          </a>
+        </div>
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold mb-4">My Favorites</h3>
+          <a
+            href="/favorites"
+            className="inline-block bg-black text-white px-5 py-2 rounded-xl"
+          >
+            View Favorites
+          </a>
+        </div>
+      </div>
+
     </div>
-  );
+  </div>
+);
 }
 
 export default Profile;

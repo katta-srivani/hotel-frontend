@@ -22,6 +22,7 @@ function Navbar() {
   const bellRef = useRef();
 
   const handleLogout = () => {
+    console.log('Logout clicked');
     logout();
   };
 
@@ -69,134 +70,80 @@ function Navbar() {
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b shadow-sm">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-center justify-between h-16">
-
-          {/* LOGO */}
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 shadow-md">
-              <FaMapMarkerAlt className="text-white text-xl" />
-            </div>
-            <span className="text-xl font-extrabold text-gray-800">
-              Travelerly
-            </span>
-          </Link>
-
-          {/* CENTER */}
-          <div className="hidden lg:flex items-center gap-10">
-            <Link className="nav-link" to="/">Explore Hotels</Link>
-            <a href="/#" className="nav-link">About</a>
-            <a href="/#" className="nav-link">Contact</a>
+    <nav className="sticky top-0 z-30 bg-white/95 shadow-md backdrop-blur border-b border-gray-100">
+      <div className="px-12 h-20 flex items-center justify-between gap-8">
+        {/* LEFT - LOGO */}
+        <Link to="/" className="flex items-center gap-2 min-w-[140px]">
+          <div className="w-12 h-12 bg-rose-500 rounded-2xl flex items-center justify-center text-white">
+            <FaMapMarkerAlt size={24} />
           </div>
-
-          {/* RIGHT */}
-          <div className="flex items-center gap-4">
-
-            {!isAuthenticated ? (
-              <div className="flex gap-3">
-                <Link to="/login" className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg">
-                  Log In
-                </Link>
-                <Link to="/register" className="px-5 py-2 text-white rounded-lg bg-blue-600">
-                  Sign Up
-                </Link>
-              </div>
-            ) : (
-              <>
-                {/* 🔔 NOTIFICATION BELL */}
-                <div className="relative" ref={bellRef}>
-                  <div
-                    onClick={() => setShowNotifications(!showNotifications)}
-                    className="cursor-pointer relative"
-                  >
-                    <FaBell className="text-xl text-gray-700" />
-
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-1 rounded-full">
-                        {unreadCount}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* DROPDOWN */}
-                  {showNotifications && (
-                    <div className="absolute right-0 mt-3 w-80 bg-white shadow-xl rounded-xl p-3 border max-h-96 overflow-y-auto">
-                      <h3 className="font-semibold mb-2">Notifications</h3>
-
-                      {notifications.length === 0 ? (
-                        <p className="text-gray-400 text-sm">No notifications</p>
-                      ) : (
-                        notifications.map(n => (
-                          <div
-                            key={n._id}
-                            className={`p-2 mb-2 rounded cursor-pointer ${
-                              n.isRead ? "bg-gray-100" : "bg-blue-50"
-                            }`}
-                            onClick={() => markAsRead(n._id)}
-                          >
-                            <p className="text-sm">{n.message}</p>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* USER DROPDOWN */}
-                <div className="relative" ref={dropdownRef}>
-                  <div
-                    onClick={() => setOpen(!open)}
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <div className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-600 text-white">
-                      {getInitial()}
-                    </div>
-                    <FaChevronDown className={`text-xs ${open ? "rotate-180" : ""}`} />
-                  </div>
-
-                  {open && (
-                    <div className="absolute right-0 mt-3 w-72 bg-white rounded-xl shadow-xl border">
-                      <div className="p-4 bg-gray-50 border-b">
-                        <p className="font-semibold">{user?.firstName || user?.name || 'User'}</p>
-                        <p className="text-sm text-gray-500">{user?.email}</p>
-                      </div>
-
-                      <DropdownLink to="/my-bookings" icon={<FaCalendarAlt />}>
-                        My Bookings
-                      </DropdownLink>
-
-                      <DropdownLink to="/profile" icon={<FaUser />}>
-                        Profile
-                      </DropdownLink>
-
-                      {user?.role === "admin" && (
-                        <DropdownLink to="/admin/dashboard" icon={<FaCog />}>
-                          Dashboard
-                        </DropdownLink>
-                      )}
-
-                      <button
-                        onClick={handleLogout}
-                        className="w-full text-left px-5 py-3 text-red-600 hover:bg-red-50 flex items-center gap-3"
-                      >
-                        <FaSignOutAlt />
-                        Logout
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </>
+          <span className="font-bold text-2xl tracking-tight text-gray-900">Travelerly</span>
+        </Link>
+        {/* CENTER - EMPTY (search bar moved to hero section) */}
+        <div className="flex-1 flex justify-center"></div>
+        {/* RIGHT - NAV LINKS & AVATAR */}
+        <div className="flex items-center gap-10 min-w-[400px] justify-end">
+          <div className="hidden md:flex gap-8 text-base font-semibold text-gray-600">
+            <Link to="/" className="hover:text-rose-600 transition">Explore</Link>
+            <Link to="/mybookings" className="hover:text-rose-600 transition">Bookings</Link>
+            <Link to="/wishlist" className="hover:text-yellow-500 transition">Wishlist</Link>
+            <Link to="/about" className="hover:text-rose-600 transition">About</Link>
+            <Link to="/contact" className="hover:text-rose-600 transition">Contact</Link>
+          </div>
+          <button ref={bellRef} onClick={() => setShowNotifications((v) => !v)} className="relative p-2 rounded-full hover:bg-gray-100">
+            <FaBell className="text-gray-500" size={22} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold">{unreadCount}</span>
             )}
-
-            {/* MOBILE */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden text-blue-600 text-xl"
-            >
-              {mobileMenuOpen ? <FaTimes /> : <FaBars />}
-            </button>
-          </div>
+          </button>
+          {showNotifications && (
+            <div className="absolute right-8 top-16 bg-white shadow-lg rounded-lg py-2 w-64 z-50 border border-gray-200">
+              <div className="px-4 py-2 font-semibold text-gray-700 border-b">Notifications</div>
+              {notifications.length === 0 ? (
+                <div className="px-4 py-3 text-gray-400">No notifications</div>
+              ) : notifications.map((n) => (
+                <div key={n._id} className={`px-4 py-2 text-sm flex items-center gap-2 ${n.isRead ? 'text-gray-500' : 'text-gray-900 font-semibold'}`}
+                  onClick={() => markAsRead(n._id)}
+                >
+                  {n.message}
+                </div>
+              ))}
+            </div>
+          )}
+          {!isAuthenticated ? (
+            <>
+              <Link to="/login" className="text-base font-semibold text-gray-900 hover:underline">Login</Link>
+              <Link to="/register" className="bg-rose-500 text-white px-6 py-2 rounded-xl text-base font-semibold shadow hover:bg-rose-600 transition">
+                Sign up
+              </Link>
+            </>
+          ) : (
+            <div className="relative flex items-center gap-3">
+              <div
+                className="w-11 h-11 rounded-full bg-gray-200 flex items-center justify-center text-xl font-bold text-gray-900 cursor-pointer border border-gray-300 shadow"
+                ref={dropdownRef}
+                onClick={() => setOpen((prev) => !prev)}
+              >
+                {getInitial()}
+              </div>
+              {open && (
+                <div
+                  className="absolute right-0 top-16 bg-white shadow-lg rounded-lg py-2 w-44 z-50 border border-gray-200"
+                  onMouseDown={e => e.stopPropagation()}
+                >
+                  <Link to="/profile" className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-gray-900">
+                    <FaUser /> Profile
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 px-4 py-2 w-full text-left hover:bg-gray-100 text-red-600"
+                  >
+                    <FaSignOutAlt /> Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </nav>

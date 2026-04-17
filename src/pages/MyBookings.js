@@ -30,10 +30,8 @@ function MyBookings() {
     try {
       await api.delete(`/bookings/${id}`);
       toast.success("Booking cancelled");
-
-      setBookings(prev =>
-        prev.map(b => b._id === id ? { ...b, status: "cancelled" } : b)
-      );
+      // Fetch latest bookings from backend for accuracy
+      fetchBookings();
     } catch {
       toast.error("Error cancelling booking");
     }
@@ -69,17 +67,17 @@ function MyBookings() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-10 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="max-w-5xl mx-auto">
 
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">My Bookings</h1>
-          <p className="text-gray-500">Manage your reservations</p>
+        <div className="mb-10 text-center">
+          <h1 className="text-4xl font-extrabold text-gray-800 mb-2 tracking-tight">My Bookings</h1>
+          <p className="text-lg text-gray-500">Manage your reservations</p>
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div className="flex flex-wrap gap-3 justify-center mb-10">
           {[
             {
               id: "all",
@@ -107,10 +105,10 @@ function MyBookings() {
             <button
               key={tab.id}
               onClick={() => setFilter(tab.id)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition 
+              className={`px-6 py-2 rounded-full text-base font-semibold shadow-sm border transition-all
                 ${filter === tab.id
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-gray-600 hover:bg-gray-300"}`}
+                  ? "bg-pink-600 text-white border-pink-600"
+                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-100"}`}
             >
               {tab.label} ({tab.count})
             </button>
@@ -174,11 +172,18 @@ function MyBookings() {
                         {/* Status */}
                         <div className="flex gap-2 mt-2">
                           <span className={`px-3 py-1 text-xs rounded-full font-medium
-                            ${isCompleted ? "bg-gray-300"
+                            ${booking.status === "cancelled"
+                              ? "bg-red-500 text-white"
+                              : isCompleted ? "bg-gray-300"
                               : isActive ? "bg-green-500 text-white"
                               : isUpcoming ? "bg-blue-500 text-white"
                               : "bg-yellow-400"}`}>
-                            {isCompleted ? "Completed" : isActive ? "Booked" : isUpcoming ? "Upcoming" : "Pending"}
+                            {booking.status === "cancelled"
+                              ? "Cancelled"
+                              : isCompleted ? "Completed"
+                              : isActive ? "Booked"
+                              : isUpcoming ? "Upcoming"
+                              : "Pending"}
                           </span>
 
                           <span className={`px-3 py-1 text-xs rounded-full font-medium
@@ -199,7 +204,7 @@ function MyBookings() {
                       </p>
 
                       <div className="mt-2">
-                        {isActive && (
+                        {(isActive || isUpcoming) && (
                           <button
                             onClick={() => handleCancel(booking._id)}
                             className="text-red-500 text-sm flex items-center gap-1 hover:underline"
@@ -219,6 +224,46 @@ function MyBookings() {
                             Cancelled
                           </p>
                         )}
+
+                        {/* Direct link to review the room */}
+                        {isCompleted && booking.room?._id && (
+                          <a
+                            href={`/rooms/${booking.room._id}#reviews`}
+                            className="text-blue-500 text-xs underline block mt-1"
+                            title="Leave a review"
+                          >
+                            Review this room
+                          </a>
+                        )}
+
+                        {/* Add to calendar integration (ICS download) */}
+                        <button
+                          className="text-xs text-gray-500 underline mt-1"
+                          onClick={() => {
+                            const ics = [
+                              'BEGIN:VCALENDAR',
+                              'VERSION:2.0',
+                              'BEGIN:VEVENT',
+                              `SUMMARY=Hotel Booking: ${booking.room?.title}`,
+                              `DTSTART;VALUE=DATE:${booking.fromDate.replace(/-/g, '')}`,
+                              `DTEND;VALUE=DATE:${booking.toDate.replace(/-/g, '')}`,
+                              `DESCRIPTION=Hotel stay at ${booking.room?.title}`,
+                              'END:VEVENT',
+                              'END:VCALENDAR'
+                            ].join('\r\n');
+                            const blob = new Blob([ics], { type: 'text/calendar' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `booking-${booking._id}.ics`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                          }}
+                        >
+                          Add to Calendar
+                        </button>
                       </div>
                     </div>
 

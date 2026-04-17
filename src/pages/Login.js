@@ -34,13 +34,11 @@ function Login() {
 
     try {
       const result = await login(cleanEmail, password);
-
-      if (result.success) {
+      if (result && result.success) {
         toast.success("Login successful! 🎉");
         navigate("/", { replace: true });
-        return;
       } else {
-        toast.error(result.message || "Invalid email or password");
+        toast.error(result?.message || "Invalid email or password");
       }
     } catch (err) {
       toast.error("Something went wrong. Please try again.");

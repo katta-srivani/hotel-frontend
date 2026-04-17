@@ -25,7 +25,8 @@ function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    // alert('Register handleSubmit called');
+    console.log('[REGISTER] handleSubmit called', form);
     // ✅ Password validation
     if (form.password !== form.passwordConfirm) {
       toast.error("Passwords do not match");
@@ -36,19 +37,16 @@ function Register() {
 
     const result = await registerUser(
       form.firstName,
+      form.lastName,
       form.email,
-      form.password,
       form.phone,
-      form.lastName
+      form.password
     );
+    console.log('[REGISTER] registerUser result:', result);
 
     if (result.success) {
       toast.success("Registered successfully 🎉");
-
-      // ✅ Go to login (correct flow)
-      setTimeout(() => {
-        navigate("/login", { state: { email: form.email } });
-      }, 500);
+      navigate("/login", { state: { email: form.email } });
     } else {
       toast.error(result.message || "Registration failed");
     }
@@ -119,16 +117,21 @@ function Register() {
               value={form.password}
               onChange={handleChange}
               required
-              className="input pr-10"
+              className="input"
             />
-
-            <span
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-gray-500 cursor-pointer"
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+              onClick={() => setShowPassword((prev) => !prev)}
             >
               {showPassword ? <FaEyeSlash /> : <FaEye />}
-            </span>
+            </button>
           </div>
+
+          {/* Submit Button */}
+          <button type="submit" className="w-full bg-blue-700 text-white py-2 rounded-lg font-semibold hover:bg-blue-800 transition">
+            {loading ? 'Registering...' : 'Register'}
+          </button>
 
           {/* Confirm Password */}
           <input
