@@ -25,7 +25,6 @@ function Profile() {
   };
 
   const handleSave = async () => {
-    setLoading(true);
     try {
       const res = await api.put('/users/update-profile', formData);
       updateProfile(res.data.data || res.data);
@@ -33,8 +32,6 @@ function Profile() {
       setIsEditing(false);
     } catch {
       toast.error('Failed to update profile');
-    } finally {
-      setLoading(false);
     }
   };
 
