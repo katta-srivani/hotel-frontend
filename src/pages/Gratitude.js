@@ -1,25 +1,17 @@
 // (removed duplicate React import)
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FaCheckCircle, FaHome, FaBook } from 'react-icons/fa';
-import Confetti from 'react-confetti';
-import React, { useEffect, useState } from 'react';
+
+import React from 'react';
+
 
 function Gratitude() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [showConfetti, setShowConfetti] = useState(true);
-  // Optionally, get booking summary from location.state
-  const booking = location.state?.booking;
-
-  useEffect(() => {
-    setShowConfetti(true);
-    const timer = setTimeout(() => setShowConfetti(false), 3500);
-    return () => clearTimeout(timer);
-  }, []);
 
   return (
     <div className="max-w-xl mx-auto bg-white shadow-lg rounded-2xl p-8 mt-10 text-center relative overflow-hidden">
-      {/* Confetti removed for error debugging */}
+      {/* Confetti completely removed for build compatibility */}
       <div className="flex flex-col items-center">
         <FaCheckCircle className="text-green-500 text-6xl mb-2 animate-bounce" />
         <h2 className="text-3xl font-extrabold mb-2 text-green-700">Thank You!</h2>
