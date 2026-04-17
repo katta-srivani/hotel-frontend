@@ -10,6 +10,7 @@ function Home() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Dropdown state for amenities
+  const [rooms, setRooms] = useState([]);
   const [amenitiesDropdownOpen, setAmenitiesDropdownOpen] = useState(false);
   const amenitiesList = [
     { value: "wifi", label: "WiFi" },
