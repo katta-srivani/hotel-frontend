@@ -366,7 +366,7 @@ function Home() {
           ))}
           {/* Skeleton Loading */}
           {loading &&
-            [...Array(4)].map((_, i) => (
+            [...Array(4)].map((i) => (
               <div
                 key={i}
                 className="animate-pulse bg-white rounded-2xl p-5 space-y-3 border border-gray-200 shadow"
