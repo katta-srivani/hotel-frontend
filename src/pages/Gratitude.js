@@ -7,7 +7,6 @@ import React from 'react';
 
 function Gratitude() {
   const navigate = useNavigate();
-  const location = useLocation();
 
   return (
     <div className="max-w-xl mx-auto bg-white shadow-lg rounded-2xl p-8 mt-10 text-center relative overflow-hidden">

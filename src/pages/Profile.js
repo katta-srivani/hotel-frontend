@@ -2,20 +2,11 @@ import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
-import {
-  FaUser,
-  FaPhone,
-  FaHome,
-  FaGlobe,
-  FaEnvelope,
-  FaEdit,
-  FaSave
-} from 'react-icons/fa';
+
 
 function Profile() {
   const { user, updateProfile } = useContext(AuthContext);
   const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: user?.name || '',
