@@ -129,20 +129,34 @@ function Checkout() {
 
   const effectivePricing = pricing || localPricing;
 
+  // Validation helpers
+  const validateName = (name) => /^[A-Za-z]{2,}( [A-Za-z]+)*$/.test(name.trim());
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validatePhone = (phone) => /^\d{10}$/.test(phone);
+
   const onGuestSubmit = (e) => {
     e.preventDefault();
-
     if (alreadyBooked) {
       toast.error('Room is already booked for these dates.');
       return;
     }
-
     const { firstName, lastName, email, phone } = formData;
-    if (!firstName || !lastName || !email || !phone) {
-      toast.error('Please fill all required fields');
+    if (!validateName(firstName)) {
+      toast.error('Enter a valid first name (letters only, min 2 chars)');
       return;
     }
-
+    if (!validateName(lastName)) {
+      toast.error('Enter a valid last name (letters only, min 2 chars)');
+      return;
+    }
+    if (!validateEmail(email)) {
+      toast.error('Enter a valid email address');
+      return;
+    }
+    if (!validatePhone(phone)) {
+      toast.error('Enter a valid 10-digit phone number');
+      return;
+    }
     setPaymentStep(true);
   };
 
@@ -231,7 +245,6 @@ function Checkout() {
       toast.error('Razorpay script not loaded');
       return;
     }
-
     try {
       setLoading(true);
       const orderData = await createBookingOrder();
@@ -239,13 +252,11 @@ function Checkout() {
         toast.error('Unable to create payment order');
         return;
       }
-
       const amountToPay = Number(orderData.bookingData.totalAmount || 0);
       if (!amountToPay || amountToPay <= 0) {
         toast.error('Invalid payment amount');
         return;
       }
-
       const options = {
         key: orderData.key,
         amount: Math.round(amountToPay * 100),
@@ -264,7 +275,18 @@ function Checkout() {
               paymentId: response.razorpay_payment_id,
               orderId: response.razorpay_order_id,
               signature: response.razorpay_signature,
-              bookingData: { ...orderData.bookingData, couponCode: coupon.trim() || undefined },
+              bookingData: {
+                ...orderData.bookingData,
+                guestDetails: {
+                  firstName: formData.firstName,
+                  lastName: formData.lastName,
+                  email: formData.email,
+                  phone: formData.phone,
+                  address: formData.address,
+                  specialRequests: formData.specialRequests,
+                },
+                coupon: coupon.trim() || undefined,
+              },
             });
             toast.success('Payment successful!');
             redirectOnSuccess(verifyRes.data?.booking?._id);
@@ -276,7 +298,6 @@ function Checkout() {
           ondismiss: () => toast.error('Payment was not completed'),
         },
       };
-
       const rzp = new window.Razorpay(options);
       rzp.open();
     } catch (err) {
@@ -299,7 +320,6 @@ function Checkout() {
       toast.error('Enter valid 3-digit CVV');
       return;
     }
-
     try {
       setLoading(true);
       const orderData = await createBookingOrder();
@@ -307,13 +327,22 @@ function Checkout() {
         toast.error('Unable to create booking order');
         return;
       }
-
       const verifyRes = await api.post('/bookings/verify', {
         paymentMethod: 'card',
         paymentId: `CARD_${Date.now()}`,
-        bookingData: { ...orderData.bookingData, couponCode: coupon.trim() || undefined },
+        bookingData: {
+          ...orderData.bookingData,
+          guestDetails: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+            specialRequests: formData.specialRequests,
+          },
+          coupon: coupon.trim() || undefined,
+        },
       });
-
       toast.success('Card payment successful!');
       redirectOnSuccess(verifyRes.data?.booking?._id);
     } catch (err) {
@@ -331,12 +360,21 @@ function Checkout() {
         toast.error('Unable to create booking order');
         return;
       }
-
       const verifyRes = await api.post('/bookings/verify', {
         paymentMethod: 'cash',
-        bookingData: { ...orderData.bookingData, couponCode: coupon.trim() || undefined },
+        bookingData: {
+          ...orderData.bookingData,
+          guestDetails: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+            specialRequests: formData.specialRequests,
+          },
+          coupon: coupon.trim() || undefined,
+        },
       });
-
       toast.success('Booking confirmed!');
       redirectOnSuccess(verifyRes.data?.booking?._id);
     } catch (err) {

@@ -364,8 +364,8 @@ function Home() {
       {/* Room Grid */}
       <div className="max-w-7xl mx-auto px-6 py-10 relative">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-          {Array.isArray(filteredRooms) && filteredRooms.map((room, index) => (
-            <RoomCard key={`${room._id}-${index}`} room={room} />
+          {Array.isArray(filteredRooms) && filteredRooms.map((room) => (
+            <RoomCard key={room._id} room={room} />
           ))}
           {/* Skeleton Loading */}
           {loading &&

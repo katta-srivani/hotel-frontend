@@ -87,6 +87,10 @@ function Navbar() {
             <Link to="/wishlist" className="hover:text-yellow-500 transition">Wishlist</Link>
             <Link to="/about" className="hover:text-rose-600 transition">About</Link>
             <Link to="/contact" className="hover:text-rose-600 transition">Contact</Link>
+            {/* Admin Dashboard link visible only to admin users */}
+            {user?.role === 'admin' && (
+              <Link to="/admin/dashboard" className="hover:text-blue-700 text-blue-700 transition font-bold">Admin Dashboard</Link>
+            )}
           </div>
           <button ref={bellRef} onClick={() => setShowNotifications((v) => !v)} className="relative p-2 rounded-full hover:bg-gray-100">
             <FaBell className="text-gray-500" size={22} />
@@ -117,12 +121,17 @@ function Navbar() {
             </>
           ) : (
             <div className="relative flex items-center gap-3">
-              <div
-                className="w-11 h-11 rounded-full bg-gray-200 flex items-center justify-center text-xl font-bold text-gray-900 cursor-pointer border border-gray-300 shadow"
-                ref={dropdownRef}
-                onClick={() => setOpen((prev) => !prev)}
-              >
-                {getInitial()}
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-11 h-11 rounded-full bg-gray-200 flex items-center justify-center text-xl font-bold text-gray-900 cursor-pointer border border-gray-300 shadow"
+                  ref={dropdownRef}
+                  onClick={() => setOpen((prev) => !prev)}
+                >
+                  {getInitial()}
+                </div>
+                {user?.role === 'admin' && (
+                  <span className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-lg ml-1">Admin</span>
+                )}
               </div>
               {open && (
                 <div

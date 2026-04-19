@@ -271,25 +271,65 @@ function RoomDetails() {
   };
 
   // ✅ Handle COD booking directly
+  // Guest info state for COD booking
+  const [guestInfo, setGuestInfo] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    address: '',
+    specialRequests: ''
+  });
+
+  const validateName = (name) => /^[A-Za-z]{2,}( [A-Za-z]+)*$/.test(name.trim());
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validatePhone = (phone) => /^\d{10}$/.test(phone);
+
   const handleCODBooking = async () => {
+    // Validation
     if (!checkInDate || !checkOutDate) {
       toast.error("Select check-in and check-out dates");
       return;
     }
+    if (new Date(checkOutDate) <= new Date(checkInDate)) {
+      toast.error("Check-out must be after check-in");
+      return;
+    }
+    if (guests < 1 || guests > (room?.maxGuests || 10)) {
+      toast.error(`Guests must be between 1 and ${room?.maxGuests || 10}`);
+      return;
+    }
+    if (!validateName(guestInfo.firstName)) {
+      toast.error('Enter a valid first name (letters only, min 2 chars)');
+      return;
+    }
+    if (!validateName(guestInfo.lastName)) {
+      toast.error('Enter a valid last name (letters only, min 2 chars)');
+      return;
+    }
+    if (!validateEmail(guestInfo.email)) {
+      toast.error('Enter a valid email address');
+      return;
+    }
+    if (!validatePhone(guestInfo.phone)) {
+      toast.error('Enter a valid 10-digit phone number');
+      return;
+    }
     try {
+      // Calculate number of nights
+      const nights = Math.max(1, Math.ceil((new Date(checkOutDate) - new Date(checkInDate)) / (1000 * 60 * 60 * 24)));
+      const totalAmount = room.pricePerNight * nights;
       const res = await api.post("/bookings/verify", {
         bookingData: {
           roomId: room._id,
           fromDate: checkInDate,
           toDate: checkOutDate,
-          totalDays:
-            (new Date(checkOutDate) - new Date(checkInDate)) /
-            (1000 * 60 * 60 * 24),
-          totalAmount: room.pricePerNight, // simple calculation
+          totalDays: nights,
+          totalAmount,
+          guestDetails: guestInfo,
         },
         paymentMethod: "cash",
       });
-
       toast.success("Booking confirmed via COD!");
       setIsBooked(true);
       setCurrentBooking(res.data.booking);
@@ -577,12 +617,71 @@ function RoomDetails() {
                   required
                 />
               </label>
-
+              {/* Guest Info Fields */}
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="First Name *"
+                  value={guestInfo.firstName}
+                  onChange={e => setGuestInfo(g => ({ ...g, firstName: e.target.value }))}
+                  className="border rounded px-3 py-2"
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="Last Name *"
+                  value={guestInfo.lastName}
+                  onChange={e => setGuestInfo(g => ({ ...g, lastName: e.target.value }))}
+                  className="border rounded px-3 py-2"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="email"
+                  placeholder="Email *"
+                  value={guestInfo.email}
+                  onChange={e => setGuestInfo(g => ({ ...g, email: e.target.value }))}
+                  className="border rounded px-3 py-2"
+                  required
+                />
+                <input
+                  type="tel"
+                  placeholder="Phone *"
+                  value={guestInfo.phone}
+                  onChange={e => setGuestInfo(g => ({ ...g, phone: e.target.value }))}
+                  className="border rounded px-3 py-2"
+                  required
+                />
+              </div>
+              <input
+                type="text"
+                placeholder="Address (optional)"
+                value={guestInfo.address}
+                onChange={e => setGuestInfo(g => ({ ...g, address: e.target.value }))}
+                className="border rounded px-3 py-2"
+              />
+              <input
+                type="text"
+                placeholder="Special Requests (optional)"
+                value={guestInfo.specialRequests}
+                onChange={e => setGuestInfo(g => ({ ...g, specialRequests: e.target.value }))}
+                className="border rounded px-3 py-2"
+              />
               <div className="flex gap-2 mt-2">
                 <button
                   type="button"
                   className="bg-green-600 text-white px-6 py-2 rounded-lg flex-1"
-                  onClick={handleCODBooking} // ✅ direct COD booking
+                  onClick={handleCODBooking}
+                  disabled={
+                    !checkInDate ||
+                    !checkOutDate ||
+                    guests < 1 || guests > (room?.maxGuests || 10) ||
+                    !validateName(guestInfo.firstName) ||
+                    !validateName(guestInfo.lastName) ||
+                    !validateEmail(guestInfo.email) ||
+                    !validatePhone(guestInfo.phone)
+                  }
                 >
                   Confirm Booking (COD)
                 </button>
@@ -596,13 +695,12 @@ function RoomDetails() {
                       checkInDate,
                       checkOutDate,
                       numberOfGuests: guests,
-                      // Pre-fill empty guest details for Checkout.js
-                      firstName: '',
-                      lastName: '',
-                      email: '',
-                      phone: '',
-                      address: '',
-                      specialRequests: ''
+                      firstName: guestInfo.firstName,
+                      lastName: guestInfo.lastName,
+                      email: guestInfo.email,
+                      phone: guestInfo.phone,
+                      address: guestInfo.address,
+                      specialRequests: guestInfo.specialRequests
                     };
                     sessionStorage.setItem(
                       "bookingData",

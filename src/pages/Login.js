@@ -20,18 +20,23 @@ function Login() {
     }
   }, [isAuthenticated, navigate]);
 
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
 
     const cleanEmail = email.trim();
-    if (!cleanEmail || !password) {
-      toast.error("Email and password are required");
+    if (!validateEmail(cleanEmail)) {
+      toast.error("Enter a valid email address");
+      return;
+    }
+    if (!password) {
+      toast.error("Password is required");
       return;
     }
 
     setLoading(true);
-
     try {
       const result = await login(cleanEmail, password);
       if (result && result.success) {

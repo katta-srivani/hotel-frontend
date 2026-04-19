@@ -225,6 +225,16 @@ function MyBookings() {
                           </p>
                         )}
 
+
+                        {/* View Details button for all bookings */}
+                        <button
+                          className="text-xs text-blue-600 underline block mt-1"
+                          onClick={() => window.open(`/booking/${booking._id}`, "_self")}
+                          title="View booking details"
+                        >
+                          View Details
+                        </button>
+
                         {/* Direct link to review the room */}
                         {isCompleted && booking.room?._id && (
                           <a

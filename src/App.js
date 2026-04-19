@@ -8,6 +8,7 @@ import RoomDetails from "./pages/RoomDetails";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import MyBookings from "./pages/MyBookings";
+import BookingDetails from "./pages/BookingDetails";
 import Favorites from "./pages/Favorites";
 import Wishlist from "./pages/Wishlist";
 import Profile from "./pages/Profile";
@@ -18,6 +19,8 @@ import Contact from "./pages/Contact";
 import Gratitude from "./pages/Gratitude";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import PrivateRoute from "./components/PrivateRoute";
 import { AuthContext } from "./context/AuthContext";
 
@@ -52,9 +55,12 @@ function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" replace />} />
           <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/" replace />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           {/* Protected user routes */}
           <Route path="/mybookings" element={<PrivateRoute><MyBookings /></PrivateRoute>} />
+          <Route path="/booking/:id" element={<PrivateRoute><BookingDetails /></PrivateRoute>} />
           <Route path="/billing" element={<PrivateRoute><Billing /></PrivateRoute>} />
           <Route path="/gratitude" element={<PrivateRoute><Gratitude /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />

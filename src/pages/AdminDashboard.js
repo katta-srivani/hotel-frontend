@@ -872,7 +872,7 @@ function AdminDashboard() {
                       </tr>
                     ))}
                   {bookings.length === 0 && (
-                    <tr><td colSpan={6} className="p-4 text-center text-gray-500">No bookings found.</td></tr>
+                    <tr><td colSpan={7} className="p-4 text-center text-gray-500">No bookings found.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -997,8 +997,8 @@ function AdminDashboard() {
 
 const Card = ({ title, value }) => (
   <div className="bg-white p-5 rounded shadow">
-    <p>{title}</p>
-    <h2 className="text-xl font-bold">{value}</h2>
+    <div className="text-xs text-gray-500 mb-1">{title}</div>
+    <div className="text-2xl font-bold text-blue-700">{value}</div>
   </div>
 );
 

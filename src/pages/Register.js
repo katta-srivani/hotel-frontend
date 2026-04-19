@@ -23,18 +23,42 @@ function Register() {
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
+
+  // Validation helpers
+  const validateName = (name) => /^[A-Za-z]{2,}( [A-Za-z]+)*$/.test(name.trim());
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validatePhone = (phone) => /^\d{10}$/.test(phone);
+  const validatePassword = (pw) => pw.length >= 6 && /[A-Za-z]/.test(pw) && /\d/.test(pw);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // alert('Register handleSubmit called');
-    console.log('[REGISTER] handleSubmit called', form);
-    // ✅ Password validation
+    // Robust validation
+    if (!validateName(form.firstName)) {
+      toast.error("Enter a valid first name (letters only, min 2 chars)");
+      return;
+    }
+    if (form.lastName && !validateName(form.lastName)) {
+      toast.error("Enter a valid last name (letters only)");
+      return;
+    }
+    if (!validateEmail(form.email)) {
+      toast.error("Enter a valid email address");
+      return;
+    }
+    if (!validatePhone(form.phone)) {
+      toast.error("Enter a valid 10-digit phone number");
+      return;
+    }
+    if (!validatePassword(form.password)) {
+      toast.error("Password must be at least 6 chars, include a letter and a number");
+      return;
+    }
     if (form.password !== form.passwordConfirm) {
       toast.error("Passwords do not match");
       return;
     }
 
     setLoading(true);
-
     const result = await registerUser(
       form.firstName,
       form.lastName,
@@ -42,15 +66,12 @@ function Register() {
       form.phone,
       form.password
     );
-    console.log('[REGISTER] registerUser result:', result);
-
     if (result.success) {
       toast.success("Registered successfully 🎉");
       navigate("/login", { state: { email: form.email } });
     } else {
       toast.error(result.message || "Registration failed");
     }
-
     setLoading(false);
   };
 
