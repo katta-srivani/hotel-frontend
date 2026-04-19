@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL,
+  baseURL: "https://hotelbooking-backend-1-texw.onrender.com/api",
   timeout: 10000,
 });
 
