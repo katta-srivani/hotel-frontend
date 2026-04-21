@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   FaUser, FaSignOutAlt, FaMapMarkerAlt, FaBell
 } from "react-icons/fa";
@@ -7,6 +7,7 @@ import api from "../utils/api";
 import { AuthContext } from "../context/AuthContext";
 
 function Navbar() {
+  const navigate = useNavigate();
   const { user, token, isAuthenticated, logout } = React.useContext(AuthContext);
 
   const [open, setOpen] = useState(false);
@@ -35,11 +36,15 @@ function Navbar() {
   };
 
   // ✅ Mark as read
-  const markAsRead = async (id) => {
-    await api.put(`/notifications/${id}`);
+  const markAsRead = async (notification) => {
+    await api.put(`/notifications/${notification._id}`);
     setNotifications(prev =>
-      prev.map(n => n._id === id ? { ...n, isRead: true } : n)
+      prev.map(n => n._id === notification._id ? { ...n, isRead: true } : n)
     );
+    if (notification.link) {
+      setShowNotifications(false);
+      navigate(notification.link);
+    }
   };
 
   useEffect(() => {
@@ -83,6 +88,7 @@ function Navbar() {
         <div className="flex items-center gap-10 min-w-[400px] justify-end">
           <div className="hidden md:flex gap-8 text-base font-semibold text-gray-600">
             <Link to="/" className="hover:text-rose-600 transition">Explore</Link>
+            <Link to="/offers" className="hover:text-rose-600 transition">Offers</Link>
             <Link to="/mybookings" className="hover:text-rose-600 transition">Bookings</Link>
             <Link to="/wishlist" className="hover:text-yellow-500 transition">Wishlist</Link>
             <Link to="/about" className="hover:text-rose-600 transition">About</Link>
@@ -105,7 +111,7 @@ function Navbar() {
                 <div className="px-4 py-3 text-gray-400">No notifications</div>
               ) : notifications.map((n) => (
                 <div key={n._id} className={`px-4 py-2 text-sm flex items-center gap-2 ${n.isRead ? 'text-gray-500' : 'text-gray-900 font-semibold'}`}
-                  onClick={() => markAsRead(n._id)}
+                  onClick={() => markAsRead(n)}
                 >
                   {n.message}
                 </div>

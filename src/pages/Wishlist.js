@@ -9,7 +9,7 @@ function Wishlist() {
   useEffect(() => {
     async function fetchWishlist() {
       try {
-        const res = await api.get("/favorites");
+        const res = await api.get("/favorites", { params: { type: "wishlist" } });
         setWishlist(res.data.favorites || []);
       } catch {
         setWishlist([]);

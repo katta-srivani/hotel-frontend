@@ -136,6 +136,16 @@ function MyBookings() {
                 booking.status !== "cancelled";
 
               const isUpcoming = today < checkIn && booking.status !== "cancelled";
+              const paymentLabel =
+                booking.status === "cancelled"
+                  ? "cancelled"
+                  : booking.paymentStatus || "pending";
+              const paymentBadgeClass =
+                paymentLabel === "paid"
+                  ? "bg-green-500 text-white"
+                  : paymentLabel === "cancelled"
+                    ? "bg-red-500 text-white"
+                    : "bg-yellow-400";
 
               return (
                 <div
@@ -187,10 +197,8 @@ function MyBookings() {
                           </span>
 
                           <span className={`px-3 py-1 text-xs rounded-full font-medium
-                            ${booking.paymentStatus === "paid"
-                              ? "bg-green-500 text-white"
-                              : "bg-yellow-400"}`}>
-                            {booking.paymentStatus || "pending"}
+                            ${paymentBadgeClass}`}>
+                            {paymentLabel}
                           </span>
                         </div>
                       </div>

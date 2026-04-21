@@ -17,6 +17,7 @@ import Billing from "./pages/Billing";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Gratitude from "./pages/Gratitude";
+import Offer from "./pages/Offer";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -53,6 +54,7 @@ function App() {
           <Route path="/rooms/:id" element={<RoomDetails />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/offers" element={<Offer />} />
           <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" replace />} />
           <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/" replace />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

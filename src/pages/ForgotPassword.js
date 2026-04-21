@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import api from "../utils/api";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -13,24 +14,15 @@ const ForgotPassword = () => {
     setSuccess("");
 
     try {
-      const response = await fetch("http://localhost:5000/api/users/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccess("Password reset link sent to your email.");
-      } else {
-        setError(data.message || "Failed to send reset link.");
-      }
+      await api.post("/users/forgot-password", { email });
+      setSuccess("Password reset link sent to your email.");
     } catch (err) {
-      setError("Server error. Please try again later.");
+      setError(
+        err.response?.data?.message || "Failed to send reset link."
+      );
     }
 
-    setLoading(false); // good practice
+    setLoading(false);
   };
 
   return (   // ✅ IMPORTANT

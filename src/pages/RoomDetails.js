@@ -1,9 +1,11 @@
-import React, { useEffect, useState, useContext } from "react";
-import { useParams } from "react-router-dom";
+import React, { useEffect, useMemo, useState, useContext } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import api from "../utils/api";
 import toast from "react-hot-toast";
 import { AuthContext } from "../context/AuthContext";
 import { FaStar, FaRegStar } from "react-icons/fa";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 // Helper to get all dates between two dates (inclusive)
 function getDatesBetween(start, end) {
@@ -16,44 +18,62 @@ function getDatesBetween(start, end) {
   return arr;
 }
 
+function toLocalDate(value) {
+  const date = new Date(value);
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function formatDateValue(date) {
+  if (!date) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function RoomDetails() {
-    // Get user and id FIRST
-    const { id } = useParams();
-    const { user } = useContext(AuthContext);
-
-    // Room and related state (must be declared before any use)
-    const [room, setRoom] = useState(null);
-    const [loading, setLoading] = useState(true);
-
-    // Wishlist state
-    const [isWishlisted, setIsWishlisted] = useState(false);
-    useEffect(() => {
-      if (!room?._id || !user) return;
-      api.get("/favorites")
-        .then((res) => {
-          const favs = res.data.favorites || [];
-          setIsWishlisted(favs.some((w) => w.room && w.room._id === room._id));
-        })
-        .catch(() => setIsWishlisted(false));
-    }, [room?._id, user]);
-
-    const handleToggleWishlist = async () => {
-      if (!user) return toast.error("Login first");
-      try {
-        if (isWishlisted) {
-          await api.delete(`/favorites/${room._id}`);
-          setIsWishlisted(false);
-          toast.success("Removed from wishlist");
-        } else {
-          await api.post("/favorites", { roomId: room._id });
-          setIsWishlisted(true);
-          toast.success("Added to wishlist");
-        }
-      } catch {
-        toast.error("Failed to update wishlist");
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
+  // Wishlist toggle handler
+  const handleToggleWishlist = async () => {
+    if (!user) return toast.error("Login first");
+    try {
+      if (isWishlisted) {
+        await api.delete(`/favorites/${room._id}`, { params: { type: "wishlist" } });
+        setIsWishlisted(false);
+        toast.success("Removed from wishlist");
+      } else {
+        await api.post("/favorites", { roomId: room._id, type: "wishlist" });
+        setIsWishlisted(true);
+        toast.success("Added to wishlist");
       }
-    };
-  // Review state
+    } catch (err) {
+      toast.error("Failed to update wishlist");
+    }
+  };
+  const [room, setRoom] = useState(null);
+  const [loading, setLoading] = useState(true);
+  // const [codLoading, setCodLoading] = useState(false); // Removed COD
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [checkInDate, setCheckInDate] = useState("");
+  const [checkOutDate, setCheckOutDate] = useState("");
+  const [guests, setGuests] = useState(1);
+  const [unavailableDates, setUnavailableDates] = useState([]);
+  // Duplicate booking state declarations removed
+  const [timeLeft, setTimeLeft] = useState(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [guestInfo, setGuestInfo] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    address: '',
+    specialRequests: ''
+  });
   const [reviews, setReviews] = useState([]);
   const [reviewLoading, setReviewLoading] = useState(true);
   const [reviewError, setReviewError] = useState(null);
@@ -61,37 +81,12 @@ function RoomDetails() {
   const [newComment, setNewComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
   const [refreshReviews, setRefreshReviews] = useState(false);
-  // Track if user already reviewed
   const [userReview, setUserReview] = useState(null);
-
-  // Fetch reviews for this room
-  useEffect(() => {
-    setReviewLoading(true);
-    setReviewError(null);
-    api
-      .get(`/reviews/${id}`)
-      .then((res) => {
-        const allReviews = res.data.reviews || [];
-        setReviews(allReviews);
-        // Find if current user has already reviewed
-        if (user && allReviews.length > 0) {
-          const found = allReviews.find(r => r.user?._id === user._id);
-          setUserReview(found || null);
-          if (found) {
-            setNewRating(found.rating);
-            setNewComment(found.comment);
-          } else {
-            setNewRating(5);
-            setNewComment("");
-          }
-        }
-      })
-      .catch(() => {
-        setReviewError("Failed to load reviews");
-      })
-      .finally(() => setReviewLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, refreshReviews]);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const unavailableDateSet = useMemo(
+    () => new Set(unavailableDates),
+    [unavailableDates]
+  );
 
   // Submit a new review
   const handleSubmitReview = async (e) => {
@@ -102,7 +97,6 @@ function RoomDetails() {
     }
     setSubmittingReview(true);
     try {
-      // If user already reviewed, update (PUT), else create (POST)
       let res;
       if (userReview) {
         res = await api.put(`/reviews/${userReview._id}`, {
@@ -131,14 +125,7 @@ function RoomDetails() {
     }
   };
 
-  // (already declared above)
-
-  const [showBookingForm, setShowBookingForm] = useState(false);
-  const [checkInDate, setCheckInDate] = useState("");
-  const [checkOutDate, setCheckOutDate] = useState("");
-  const [guests, setGuests] = useState(1);
-  const [unavailableDates, setUnavailableDates] = useState([]);
-  // Fetch unavailable dates for this room (booked dates)
+  
   useEffect(() => {
     async function fetchUnavailable() {
       try {
@@ -166,8 +153,24 @@ function RoomDetails() {
   const [myBookingId, setMyBookingId] = useState(null);
   const [pendingBookingId, setPendingBookingId] = useState(null);
   const [currentBooking, setCurrentBooking] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(null);
-  const [cancelLoading, setCancelLoading] = useState(false);
+  const saveBookingAndGoToCheckout = (preferredPayment) => {
+    const bookingData = {
+      roomId: room._id,
+      checkInDate,
+      checkOutDate,
+      numberOfGuests: guests,
+      firstName: guestInfo.firstName,
+      lastName: guestInfo.lastName,
+      email: guestInfo.email,
+      phone: guestInfo.phone,
+      address: guestInfo.address,
+      specialRequests: guestInfo.specialRequests,
+      preferredPayment,
+    };
+
+    sessionStorage.setItem("bookingData", JSON.stringify(bookingData));
+    navigate('/checkout');
+  };
 
   // 📦 Fetch room
   const fetchRoom = async () => {
@@ -234,6 +237,44 @@ function RoomDetails() {
     return () => clearInterval(interval);
   }, [currentBooking]);
 
+  // Fetch reviews
+  useEffect(() => {
+    async function fetchReviews() {
+      try {
+        const res = await api.get(`/reviews/${id}`);
+        setReviews(res.data.reviews || []);
+        if (user) {
+          const userRev = res.data.reviews.find(r => r.user._id === user._id);
+          setUserReview(userRev || null);
+          if (userRev) {
+            setNewRating(userRev.rating || 5);
+            setNewComment(userRev.comment || "");
+          }
+        }
+      } catch (err) {
+        setReviewError("Failed to load reviews");
+      } finally {
+        setReviewLoading(false);
+      }
+    }
+    if (id) fetchReviews();
+  }, [id, user, refreshReviews]);
+
+  // Fetch wishlist status
+  useEffect(() => {
+    async function fetchWishlist() {
+      if (!user) return;
+      try {
+        const res = await api.get('/favorites', { params: { type: 'wishlist' } });
+        const isWish = res.data.favorites.some(f => f.room._id === id);
+        setIsWishlisted(isWish);
+      } catch (err) {
+        // ignore
+      }
+    }
+    fetchWishlist();
+  }, [user, id]);
+
   // ❌ Cancel Booking
   const handleCancelBooking = async () => {
     if (!myBookingId && !pendingBookingId) return;
@@ -270,76 +311,7 @@ function RoomDetails() {
     }
   };
 
-  // ✅ Handle COD booking directly
-  // Guest info state for COD booking
-  const [guestInfo, setGuestInfo] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: '',
-    specialRequests: ''
-  });
-
-  const validateName = (name) => /^[A-Za-z]{2,}( [A-Za-z]+)*$/.test(name.trim());
-  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const validatePhone = (phone) => /^\d{10}$/.test(phone);
-
-  const handleCODBooking = async () => {
-    // Validation
-    if (!checkInDate || !checkOutDate) {
-      toast.error("Select check-in and check-out dates");
-      return;
-    }
-    if (new Date(checkOutDate) <= new Date(checkInDate)) {
-      toast.error("Check-out must be after check-in");
-      return;
-    }
-    if (guests < 1 || guests > (room?.maxGuests || 10)) {
-      toast.error(`Guests must be between 1 and ${room?.maxGuests || 10}`);
-      return;
-    }
-    if (!validateName(guestInfo.firstName)) {
-      toast.error('Enter a valid first name (letters only, min 2 chars)');
-      return;
-    }
-    if (!validateName(guestInfo.lastName)) {
-      toast.error('Enter a valid last name (letters only, min 2 chars)');
-      return;
-    }
-    if (!validateEmail(guestInfo.email)) {
-      toast.error('Enter a valid email address');
-      return;
-    }
-    if (!validatePhone(guestInfo.phone)) {
-      toast.error('Enter a valid 10-digit phone number');
-      return;
-    }
-    try {
-      // Calculate number of nights
-      const nights = Math.max(1, Math.ceil((new Date(checkOutDate) - new Date(checkInDate)) / (1000 * 60 * 60 * 24)));
-      const totalAmount = room.pricePerNight * nights;
-      const res = await api.post("/bookings/verify", {
-        bookingData: {
-          roomId: room._id,
-          fromDate: checkInDate,
-          toDate: checkOutDate,
-          totalDays: nights,
-          totalAmount,
-          guestDetails: guestInfo,
-        },
-        paymentMethod: "cash",
-      });
-      toast.success("Booking confirmed via COD!");
-      setIsBooked(true);
-      setCurrentBooking(res.data.booking);
-      setMyBookingId(res.data.booking._id);
-      setShowBookingForm(false);
-    } catch (err) {
-      console.error(err);
-      toast.error("Booking failed");
-    }
-  };
+  // ...existing code...
 
   // Booked date ranges for disabling in date picker
 
@@ -353,6 +325,34 @@ function RoomDetails() {
     parking: "Parking",
     breakfast: "Breakfast",
     pool: "Pool",
+  };
+  const checkInDateValue = checkInDate ? toLocalDate(checkInDate) : null;
+  const checkOutDateValue = checkOutDate ? toLocalDate(checkOutDate) : null;
+  const canSelectCheckInDate = (date) => {
+    const today = toLocalDate(new Date());
+    const formatted = formatDateValue(date);
+    return date >= today && !unavailableDateSet.has(formatted);
+  };
+  const canSelectCheckOutDate = (date) => {
+    if (!checkInDateValue) {
+      return false;
+    }
+
+    if (date <= checkInDateValue) {
+      return false;
+    }
+
+    let cursor = new Date(checkInDateValue);
+    cursor.setDate(cursor.getDate() + 1);
+
+    while (cursor <= date) {
+      if (unavailableDateSet.has(formatDateValue(cursor))) {
+        return false;
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return true;
   };
 
   return (
@@ -372,12 +372,12 @@ function RoomDetails() {
                     <div key={r._id} className="bg-white border border-gray-100 rounded-xl shadow-sm p-4 flex gap-4 items-start">
                       {/* Avatar Initial */}
                       <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-700 text-lg">
-                        {(r.user?.name || "A").charAt(0).toUpperCase()}
+                        {((r.user?.firstName || r.user?.name || "A").charAt(0)).toUpperCase()}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-semibold text-gray-900">
-                            {r.user?.name || "Anonymous"}
+                            {[r.user?.firstName, r.user?.lastName].filter(Boolean).join(" ") || r.user?.name || "Anonymous"}
                           </span>
                           <span className="flex items-center text-rose-500 text-sm">
                             {Array.from({ length: r.rating }).map((_, i) => (
@@ -583,26 +583,37 @@ function RoomDetails() {
             >
               <label className="flex flex-col gap-1">
                 <span className="font-medium">Check-in Date</span>
-                <input
-                  type="date"
-                  className="border rounded px-3 py-2"
-                  min={new Date().toISOString().slice(0, 10)}
-                  value={checkInDate}
-                  onChange={e => setCheckInDate(e.target.value)}
+                <DatePicker
+                  selected={checkInDateValue}
+                  onChange={(date) => {
+                    const selected = formatDateValue(date);
+                    setCheckInDate(selected);
+                    if (checkOutDate && selected && checkOutDate <= selected) {
+                      setCheckOutDate("");
+                    }
+                  }}
+                  minDate={new Date()}
+                  filterDate={canSelectCheckInDate}
+                  dateFormat="yyyy-MM-dd"
+                  placeholderText="Select check-in date"
+                  className="border rounded px-3 py-2 w-full"
                   required
-                  disabled={unavailableDates.includes(checkInDate)}
                 />
               </label>
               <label className="flex flex-col gap-1">
                 <span className="font-medium">Check-out Date</span>
-                <input
-                  type="date"
-                  className="border rounded px-3 py-2"
-                  min={checkInDate || new Date().toISOString().slice(0, 10)}
-                  value={checkOutDate}
-                  onChange={e => setCheckOutDate(e.target.value)}
+                <DatePicker
+                  selected={checkOutDateValue}
+                  onChange={(date) => {
+                    setCheckOutDate(formatDateValue(date));
+                  }}
+                  minDate={checkInDateValue ? new Date(checkInDateValue.getTime() + 86400000) : new Date()}
+                  filterDate={canSelectCheckOutDate}
+                  dateFormat="yyyy-MM-dd"
+                  placeholderText="Select check-out date"
+                  className="border rounded px-3 py-2 w-full"
                   required
-                  disabled={unavailableDates.includes(checkOutDate)}
+                  disabled={!checkInDateValue}
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -668,52 +679,25 @@ function RoomDetails() {
                 onChange={e => setGuestInfo(g => ({ ...g, specialRequests: e.target.value }))}
                 className="border rounded px-3 py-2"
               />
+              {/* Payment choice buttons */}
               <div className="flex gap-2 mt-2">
                 <button
                   type="button"
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg flex-1"
-                  onClick={handleCODBooking}
-                  disabled={
-                    !checkInDate ||
-                    !checkOutDate ||
-                    guests < 1 || guests > (room?.maxGuests || 10) ||
-                    !validateName(guestInfo.firstName) ||
-                    !validateName(guestInfo.lastName) ||
-                    !validateEmail(guestInfo.email) ||
-                    !validatePhone(guestInfo.phone)
-                  }
-                >
-                  Confirm Booking (COD)
-                </button>
-                <button
-                  type="button"
                   className="bg-blue-600 text-white px-6 py-2 rounded-lg flex-1"
-                  onClick={() => {
-                    // Save booking and redirect to checkout
-                    const bookingData = {
-                      roomId: room._id,
-                      checkInDate,
-                      checkOutDate,
-                      numberOfGuests: guests,
-                      firstName: guestInfo.firstName,
-                      lastName: guestInfo.lastName,
-                      email: guestInfo.email,
-                      phone: guestInfo.phone,
-                      address: guestInfo.address,
-                      specialRequests: guestInfo.specialRequests
-                    };
-                    sessionStorage.setItem(
-                      "bookingData",
-                      JSON.stringify(bookingData)
-                    );
-                    window.location.href = "/checkout";
-                  }}
+                  onClick={() => saveBookingAndGoToCheckout("online")}
                 >
                   Pay Online
                 </button>
                 <button
                   type="button"
-                  className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg flex-1"
+                  className="bg-yellow-500 text-white px-6 py-2 rounded-lg flex-1 hover:bg-yellow-600"
+                  onClick={() => saveBookingAndGoToCheckout("cash")}
+                >
+                  Pay At Hotel
+                </button>
+                <button
+                  type="button"
+                  className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg"
                   onClick={() => setShowBookingForm(false)}
                 >
                   Cancel

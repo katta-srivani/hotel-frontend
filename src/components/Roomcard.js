@@ -14,7 +14,7 @@ function RoomCard({ room }) {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!room?._id || !token) return;
-    api.get("/favorites")
+    api.get("/favorites", { params: { type: "wishlist" } })
       .then((res) => {
         const favs = res.data.favorites || [];
         setIsWishlisted(favs.some((w) => w.room && w.room._id === room._id));
@@ -27,10 +27,10 @@ function RoomCard({ room }) {
     if (!token) return alert("Login first");
     try {
       if (isWishlisted) {
-        await api.delete(`/favorites/${room._id}`);
+        await api.delete(`/favorites/${room._id}`, { params: { type: "wishlist" } });
         setIsWishlisted(false);
       } else {
-        await api.post("/favorites", { roomId: room._id });
+        await api.post("/favorites", { roomId: room._id, type: "wishlist" });
         setIsWishlisted(true);
       }
     } catch {
@@ -44,7 +44,7 @@ function RoomCard({ room }) {
     const token = localStorage.getItem("token");
     if (!room?._id || !token) return;
 
-    api.get("/favorites")
+    api.get("/favorites", { params: { type: "favorite" } })
       .then((res) => {
         const favs = res.data.favorites || [];
         setIsFavorite(
@@ -60,10 +60,10 @@ function RoomCard({ room }) {
 
     try {
       if (isFavorite) {
-        await api.delete(`/favorites/${room._id}`);
+        await api.delete(`/favorites/${room._id}`, { params: { type: "favorite" } });
         setIsFavorite(false);
       } else {
-        await api.post("/favorites", { roomId: room._id });
+        await api.post("/favorites", { roomId: room._id, type: "favorite" });
         setIsFavorite(true);
       }
     } catch {

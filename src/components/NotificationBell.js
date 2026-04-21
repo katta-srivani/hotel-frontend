@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
 
 
 function NotificationBell() {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [open, setOpen] = useState(false);
 
@@ -19,10 +21,13 @@ function NotificationBell() {
     }
   };
 
-  const markAsRead = async (id) => {
+  const markAsRead = async (notification) => {
     try {
-      await api.put(`/notifications/${id}`);
+      await api.put(`/notifications/${notification._id}`);
       fetchNotifications();
+      if (notification.link) {
+        navigate(notification.link);
+      }
     } catch {
       // Ignore notification update errors to keep bell usable.
     }
@@ -54,7 +59,7 @@ function NotificationBell() {
                 className={`p-2 rounded-lg mb-2 cursor-pointer ${
                   n.isRead ? "bg-gray-100" : "bg-blue-100"
                 }`}
-                onClick={() => markAsRead(n._id)}
+                onClick={() => markAsRead(n)}
               >
                 {n.message}
               </div>

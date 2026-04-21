@@ -85,11 +85,19 @@ function AdminDashboard() {
     try {
 
       // Flattened logic to remove redundant nested blocks
-      if (activeTab === 'rooms') {
-        const res = await api.get('/rooms');
-        setRooms(extractArray(res));
+      if (activeTab === 'rooms' || activeTab === 'amenities') {
+        const [roomRes, bookingRes] = await Promise.all([
+          api.get('/rooms'),
+          api.get('/bookings/admin'),
+        ]);
+        setRooms(extractArray(roomRes));
+        setBookings(extractArray(bookingRes));
       } else if (activeTab === 'bookings') {
-        const res = await api.get('/bookings/admin');
+        const query = new URLSearchParams();
+        if (dateRange.from) query.set('from', dateRange.from);
+        if (dateRange.to) query.set('to', dateRange.to);
+        if (dateRange.status) query.set('status', dateRange.status);
+        const res = await api.get(`/bookings/admin${query.toString() ? `?${query.toString()}` : ''}`);
         setBookings(extractArray(res));
       } else if (activeTab === 'users') {
         const res = await api.get('/users');
