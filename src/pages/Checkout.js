@@ -105,6 +105,29 @@ function Checkout() {
 
   const effectivePricing = pricing || localPricing;
 
+  const syncPricingPreview = async (payload) => {
+    const previewPayload = payload || buildPayload();
+
+    if (!previewPayload) {
+      return null;
+    }
+
+    const { data } = await api.post('/bookings', previewPayload);
+    const booking = data?.bookingData;
+
+    if (booking) {
+      setPricing({
+        subtotal: booking.subtotal,
+        taxAmount: booking.taxAmount,
+        grossAmount: booking.grossAmount,
+        discountAmount: booking.discountAmount || 0,
+        payableTotal: booking.totalAmount,
+      });
+    }
+
+    return booking || null;
+  };
+
   useEffect(() => {
     if (!bookingData || !room) {
       return;
@@ -163,11 +186,6 @@ function Checkout() {
         address: parsed.guestDetails?.address || parsed.address || '',
         specialRequests: parsed.guestDetails?.specialRequests || parsed.specialRequests || '',
       });
-
-      if (parsed.preferredPayment === 'cash') {
-        setPaymentStep(true);
-        setSelectedPayment('Cash');
-      }
 
       if (Array.isArray(parsed.offers)) {
         setOffers(parsed.offers);
@@ -261,12 +279,24 @@ function Checkout() {
   const onGuestSubmit = (e) => {
     e.preventDefault();
 
-    if (!buildPayload()) {
+    const payload = buildPayload();
+
+    if (!payload) {
       toast.error('Please fill all required guest details');
       return;
     }
 
-    setPaymentStep(true);
+    setLoading(true);
+    syncPricingPreview(payload)
+      .then(() => {
+        setPaymentStep(true);
+      })
+      .catch((err) => {
+        toast.error(err?.response?.data?.message || 'Failed to prepare booking summary');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   const handleCancelBooking = async () => {
@@ -298,7 +328,7 @@ function Checkout() {
   };
 
   const handleCashPayment = async () => {
-      const payload = buildPayload();
+    const payload = buildPayload();
 
     if (!payload) {
       toast.error('Please fill all required guest details');
@@ -309,6 +339,7 @@ function Checkout() {
     setPaymentProcessing(true);
 
     try {
+      await syncPricingPreview(payload);
       const { data } = await api.post('/bookings', {
         ...payload,
         paymentMethod: 'cash',
@@ -352,6 +383,7 @@ function Checkout() {
     setPaymentProcessing(true);
 
     try {
+      await syncPricingPreview(payload);
       const sdkLoaded = await loadRazorpayScript();
       if (!sdkLoaded) {
         throw new Error('Failed to load Razorpay checkout');

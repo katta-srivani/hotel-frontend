@@ -1,7 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import api from "../utils/api";
+import { useNavigate, useParams } from "react-router-dom";
 import { FaCalendar, FaMapMarkerAlt, FaUsers } from "react-icons/fa";
+import api from "../utils/api";
+import { fallbackRoomImage, getSafeImageUrl } from "../utils/image";
+
+const formatDate = (value) => {
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString() : "TBD";
+};
+
+const getBookingRoom = (booking) => {
+  const room = booking?.room;
+  return room && typeof room === "object" ? room : {};
+};
 
 function BookingDetails() {
   const { id } = useParams();
@@ -14,21 +25,23 @@ function BookingDetails() {
     const fetchBooking = async () => {
       try {
         setLoading(true);
+        setError("");
         const res = await api.get(`/bookings/${id}`);
-        setBooking(res.data.booking || res.data.data);
+        setBooking(res.data.booking || res.data.data || null);
       } catch (err) {
         setError(err.response?.data?.message || "Failed to load booking details");
       } finally {
         setLoading(false);
       }
     };
+
     fetchBooking();
   }, [id]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex h-screen items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
       </div>
     );
   }
@@ -36,11 +49,11 @@ function BookingDetails() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <h2 className="text-2xl font-bold text-red-500 mb-3">Booking Not Found</h2>
-        <p className="text-gray-600 mb-4">{error}</p>
+        <h2 className="mb-3 text-2xl font-bold text-red-500">Booking Not Found</h2>
+        <p className="mb-4 text-gray-600">{error}</p>
         <button
           onClick={() => navigate("/mybookings")}
-          className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          className="rounded-lg bg-blue-600 px-5 py-2 text-white transition hover:bg-blue-700"
         >
           Back to My Bookings
         </button>
@@ -50,43 +63,99 @@ function BookingDetails() {
 
   if (!booking) return null;
 
-  const checkInDate = new Date(booking.fromDate).toLocaleDateString();
-  const checkOutDate = new Date(booking.toDate).toLocaleDateString();
+  const room = getBookingRoom(booking);
+  const title = room.title || booking.roomTitle || "Hotel Room";
+  const subtitle = room.location || room.category || room.roomType || "Room details available";
+  const imageUrl = room.imageUrls?.[0] || fallbackRoomImage;
+  const guestName =
+    [booking.guestDetails?.firstName, booking.guestDetails?.lastName].filter(Boolean).join(" ") || "Guest";
 
   return (
-    <div className="flex justify-center py-10 px-4">
-      <div className="w-full max-w-xl">
-        <h2 className="text-2xl font-bold mb-6 text-center">Booking Details</h2>
-          <div className="bg-white shadow-lg rounded-2xl p-6">
-          <h5 className="text-lg font-semibold mb-4">{booking.room?.title}</h5>
-          <div className="space-y-2 text-gray-600">
-            <p className="flex items-center gap-2">
-              <FaCalendar className="text-blue-500" />
-              {checkInDate} - {checkOutDate}
-            </p>
-            <p className="flex items-center gap-2">
-              <FaUsers className="text-blue-500" />
-              {booking.totalDays} night(s)
-            </p>
-            <p className="flex items-center gap-2">
-              <FaMapMarkerAlt className="text-blue-500" />
-              {booking.room?.category || booking.room?.roomType || "Hotel Room"}
-            </p>
-            <p className="text-sm">Booking ID: {booking._id}</p>
-            <p className="text-sm">Payment Method: {booking.paymentMethod || "pending"}</p>
-            <p className="text-sm">Guests: {booking.guestDetails?.firstName} {booking.guestDetails?.lastName} ({booking.guestDetails?.email}, {booking.guestDetails?.phone})</p>
-            <p className="text-sm">Special Requests: {booking.guestDetails?.specialRequests || "-"}</p>
+    <div className="flex justify-center px-4 py-10">
+      <div className="w-full max-w-3xl">
+        <h2 className="mb-6 text-center text-2xl font-bold">Booking Details</h2>
+
+        <div className="overflow-hidden rounded-2xl bg-white shadow-lg">
+          <img
+            src={getSafeImageUrl(imageUrl, fallbackRoomImage)}
+            alt={title}
+            className="h-64 w-full object-cover"
+            onError={(e) => {
+              e.currentTarget.src = fallbackRoomImage;
+            }}
+          />
+
+          <div className="p-6">
+            <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div>
+                <h3 className="text-2xl font-semibold text-gray-900">{title}</h3>
+                <p className="mt-1 flex items-center gap-2 text-sm text-gray-500">
+                  <FaMapMarkerAlt className="text-blue-500" />
+                  {subtitle}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-blue-50 px-4 py-3 text-left md:text-right">
+                <p className="text-xs uppercase tracking-wide text-blue-600">Total Amount</p>
+                <p className="text-2xl font-bold text-blue-700">
+                  Rs {Number(booking.totalAmount || 0).toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <p className="mb-3 text-sm font-semibold text-gray-900">Stay Summary</p>
+                <div className="space-y-3 text-sm text-gray-600">
+                  <p className="flex items-center gap-2">
+                    <FaCalendar className="text-blue-500" />
+                    {formatDate(booking.fromDate)} - {formatDate(booking.toDate)}
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <FaUsers className="text-blue-500" />
+                    {booking.totalDays || 0} night(s)
+                  </p>
+                  <p>Booking ID: {booking._id}</p>
+                  <p className="capitalize">Status: {booking.status || "pending"}</p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <p className="mb-3 text-sm font-semibold text-gray-900">Payment</p>
+                <div className="space-y-3 text-sm text-gray-600">
+                  <p className="capitalize">Method: {booking.paymentMethod || "pending"}</p>
+                  <p
+                    className={`font-medium capitalize ${
+                      booking.paymentStatus === "paid" ? "text-green-600" : "text-amber-600"
+                    }`}
+                  >
+                    Payment Status: {booking.paymentStatus || "pending"}
+                  </p>
+                  <p>Subtotal: Rs {Number(booking.subtotal || 0).toLocaleString()}</p>
+                  <p>Tax: Rs {Number(booking.taxAmount || 0).toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 md:col-span-2">
+                <p className="mb-3 text-sm font-semibold text-gray-900">Guest Details</p>
+                <div className="grid gap-3 text-sm text-gray-600 md:grid-cols-2">
+                  <p>Name: {guestName}</p>
+                  <p>Email: {booking.guestDetails?.email || "-"}</p>
+                  <p>Phone: {booking.guestDetails?.phone || "-"}</p>
+                  <p>Guests Count: {booking.guestDetails?.guests || booking.guestDetails?.adults || 1}</p>
+                  <p className="md:col-span-2">
+                    Special Requests: {booking.guestDetails?.specialRequests || "-"}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-          <hr className="my-4" />
-          <p className="font-bold text-lg">Total Amount: ₹{booking.totalAmount}</p>
-          <p className={`mt-2 font-medium ${booking.paymentStatus === "paid" ? "text-green-600" : "text-red-500"}`}>
-            Payment Status: {booking.paymentStatus || "pending"}
-          </p>
         </div>
-        <div className="text-center mt-6">
+
+        <div className="mt-6 text-center">
           <button
             onClick={() => navigate("/mybookings")}
-            className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+            className="rounded-lg bg-gray-700 px-6 py-2 text-white transition hover:bg-gray-800"
           >
             Back to My Bookings
           </button>
