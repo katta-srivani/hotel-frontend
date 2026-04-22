@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../utils/api';
 import { FaHeart } from 'react-icons/fa';
+import { fallbackRoomImage, getSafeImageUrl } from '../utils/image';
 
 function Favorites() {
   const [favorites, setFavorites] = useState([]);
@@ -33,7 +34,14 @@ function Favorites() {
         <div className="grid gap-6">
           {favorites.map(fav => (
             <div key={fav.room._id} className="bg-white rounded-xl shadow p-4 flex items-center gap-6">
-              <img src={fav.room.imageUrls?.[0]} alt="Room" className="w-32 h-24 object-cover rounded-lg" />
+              <img
+                src={getSafeImageUrl(fav.room.imageUrls?.[0], fallbackRoomImage)}
+                alt="Room"
+                className="w-32 h-24 object-cover rounded-lg"
+                onError={(e) => {
+                  e.currentTarget.src = fallbackRoomImage;
+                }}
+              />
               <div className="flex-1">
                 <h3 className="text-lg font-bold mb-1">{fav.room.title}</h3>
                 <div className="text-gray-600 mb-1">{fav.room.description?.slice(0, 60)}...</div>

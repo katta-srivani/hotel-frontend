@@ -1,10 +1,13 @@
 // src/pages/MyBookings.jsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
 import toast from "react-hot-toast";
 import { FaCalendar, FaMapMarkerAlt, FaTrash, FaCheckCircle } from "react-icons/fa";
+import { fallbackRoomImage, getSafeImageUrl } from "../utils/image";
 
 function MyBookings() {
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -28,8 +31,16 @@ function MyBookings() {
     if (!window.confirm("Cancel this booking?")) return;
 
     try {
-      await api.delete(`/bookings/${id}`);
+      const { data } = await api.delete(`/bookings/${id}`);
       toast.success("Booking cancelled");
+      if (data?.notification) {
+        window.dispatchEvent(
+          new CustomEvent("app:notification-created", {
+            detail: { notification: data.notification },
+          })
+        );
+      }
+      window.dispatchEvent(new Event("app:notifications-updated"));
       // Fetch latest bookings from backend for accuracy
       fetchBookings();
     } catch {
@@ -158,9 +169,12 @@ function MyBookings() {
                     <div className="flex gap-4">
                       {booking.room?.imageUrls?.[0] && (
                         <img
-                          src={booking.room.imageUrls[0]}
+                          src={getSafeImageUrl(booking.room.imageUrls[0], fallbackRoomImage)}
                           alt=""
                           className="w-24 h-24 object-cover rounded-lg"
+                          onError={(e) => {
+                            e.currentTarget.src = fallbackRoomImage;
+                          }}
                         />
                       )}
 
@@ -176,7 +190,7 @@ function MyBookings() {
 
                         <p className="flex items-center gap-2 text-sm text-gray-500">
                           <FaMapMarkerAlt className="text-blue-500" />
-                          {booking.room?.roomType}
+                          {booking.room?.category || booking.room?.roomType || "Hotel Room"}
                         </p>
 
                         {/* Status */}
@@ -237,7 +251,7 @@ function MyBookings() {
                         {/* View Details button for all bookings */}
                         <button
                           className="text-xs text-blue-600 underline block mt-1"
-                          onClick={() => window.open(`/booking/${booking._id}`, "_self")}
+                          onClick={() => navigate(`/booking/${booking._id}`)}
                           title="View booking details"
                         >
                           View Details

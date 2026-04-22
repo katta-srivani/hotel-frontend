@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { FaArrowLeft, FaCheckCircle, FaLock } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
+import { fallbackRoomImage, getSafeImageUrl } from '../utils/image';
 
 const loadRazorpayScript = () =>
   new Promise((resolve) => {
@@ -19,6 +20,51 @@ const loadRazorpayScript = () =>
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
   });
+
+const notifyEmailStatus = (status) => {
+  if (!status || status === 'skipped') {
+    return;
+  }
+
+  if (status === 'sent') {
+    toast.success('Confirmation email sent');
+    return;
+  }
+
+  if (status === 'partial') {
+    toast('Confirmation email sent to some recipients only');
+    return;
+  }
+
+  toast.error('Payment was recorded, but the confirmation email was not accepted by the mail server');
+};
+
+const notifyPaymentSuccessStatus = (emailStatus, notificationCreated) => {
+  if (emailStatus === 'sent') {
+    toast.success(
+      notificationCreated === false
+        ? 'Payment successful. Confirmation email sent.'
+        : 'Payment successful. Confirmation email sent and notification created.'
+    );
+    return;
+  }
+
+  if (emailStatus === 'partial') {
+    toast.success(
+      notificationCreated === false
+        ? 'Payment successful. Email sent to some recipients.'
+        : 'Payment successful. Notification created and email sent to some recipients.'
+    );
+    return;
+  }
+
+  toast.success(
+    notificationCreated === false
+      ? 'Payment successful.'
+      : 'Payment successful. Notification created.'
+  );
+  notifyEmailStatus(emailStatus);
+};
 
 function Checkout() {
   const { isAuthenticated, loading: authLoading } = useContext(AuthContext);
@@ -48,11 +94,6 @@ function Checkout() {
 
   const [selectedPayment, setSelectedPayment] = useState('');
   const [paymentProcessing, setPaymentProcessing] = useState(false);
-  const [cardDetails, setCardDetails] = useState({
-    number: '',
-    expiry: '',
-    cvv: '',
-  });
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -82,7 +123,7 @@ function Checkout() {
 
     const pricePerNight = Number(room.pricePerNight || 0);
     const subtotal = pricePerNight * nights;
-    const taxAmount = Math.round(subtotal * 0.12);
+    const taxAmount = Math.round(subtotal * 0.05);
     const grossAmount = subtotal + taxAmount;
     const discountAmount = 0;
     const payableTotal = grossAmount - discountAmount;
@@ -115,12 +156,12 @@ function Checkout() {
       const parsed = JSON.parse(stored);
       setBookingData(parsed);
       setFormData({
-        firstName: parsed.firstName || '',
-        lastName: parsed.lastName || '',
-        email: parsed.email || '',
-        phone: parsed.phone || '',
-        address: parsed.address || '',
-        specialRequests: parsed.specialRequests || '',
+        firstName: parsed.guestDetails?.firstName || parsed.firstName || '',
+        lastName: parsed.guestDetails?.lastName || parsed.lastName || '',
+        email: parsed.guestDetails?.email || parsed.email || '',
+        phone: parsed.guestDetails?.phone || parsed.phone || '',
+        address: parsed.guestDetails?.address || parsed.address || '',
+        specialRequests: parsed.guestDetails?.specialRequests || parsed.specialRequests || '',
       });
 
       if (parsed.preferredPayment === 'cash') {
@@ -155,6 +196,16 @@ function Checkout() {
 
     const guest = formData;
     if (!guest.firstName || !guest.lastName || !guest.email || !guest.phone) {
+      return null;
+    }
+
+    if (!bookingData.checkInDate || !bookingData.checkOutDate) {
+      return null;
+    }
+
+    const checkIn = new Date(bookingData.checkInDate);
+    const checkOut = new Date(bookingData.checkOutDate);
+    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime()) || checkOut <= checkIn) {
       return null;
     }
 
@@ -225,8 +276,16 @@ function Checkout() {
     }
 
     try {
-      await api.delete(`/bookings/${myBookingId}`);
+      const { data } = await api.delete(`/bookings/${myBookingId}`);
       toast.success('Booking cancelled');
+      if (data?.notification) {
+        window.dispatchEvent(
+          new CustomEvent('app:notification-created', {
+            detail: { notification: data.notification },
+          })
+        );
+      }
+      window.dispatchEvent(new Event('app:notifications-updated'));
       setAlreadyBooked(false);
       setMyBookingId(null);
     } catch (err) {
@@ -256,8 +315,24 @@ function Checkout() {
       });
 
       toast.success('Cash booking confirmed');
+      notifyEmailStatus(data?.emailStatus);
+      if (data?.notification) {
+        window.dispatchEvent(
+          new CustomEvent('app:notification-created', {
+            detail: { notification: data.notification },
+          })
+        );
+      }
+      window.dispatchEvent(new Event('app:notifications-updated'));
       sessionStorage.removeItem('bookingData');
-      navigate(`/billing?id=${data?.booking?._id}`);
+      navigate('/gratitude', {
+        state: {
+          title: 'Booking Confirmed, Payment Pending',
+          message:
+            'Your cash booking has been created, and you can complete the payment using Razorpay whenever you are ready.',
+          bookingId: data?.booking?._id || '',
+        },
+      });
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to confirm cash booking');
     } finally {
@@ -265,7 +340,7 @@ function Checkout() {
     }
   };
 
-  const handleRazorpayPayment = async (source = 'Razorpay') => {
+  const handleOnlinePayment = async (provider = 'Razorpay') => {
     const payload = buildPayload();
 
     if (!payload) {
@@ -273,13 +348,13 @@ function Checkout() {
       return;
     }
 
-    setSelectedPayment(source);
+    setSelectedPayment('Online');
     setPaymentProcessing(true);
 
     try {
       const sdkLoaded = await loadRazorpayScript();
       if (!sdkLoaded) {
-        throw new Error('Failed to load Razorpay SDK');
+        throw new Error('Failed to load Razorpay checkout');
       }
 
       const { data } = await api.post('/bookings', {
@@ -287,42 +362,119 @@ function Checkout() {
         paymentMethod: 'online',
       });
 
+      notifyEmailStatus(data?.emailStatus);
+      if (data?.notification) {
+        window.dispatchEvent(
+          new CustomEvent('app:notification-created', {
+            detail: { notification: data.notification },
+          })
+        );
+      }
+
       if (!data?.order?.id || !data?.key) {
         throw new Error('Razorpay is not configured on the server');
       }
+
+      if (data?.bookingData?.bookingId) {
+        sessionStorage.setItem(
+          'bookingData',
+          JSON.stringify({
+            ...bookingData,
+            bookingId: data.bookingData.bookingId,
+          })
+        );
+      }
+
+      const pendingBookingId = data?.bookingId || data?.booking?._id || data?.bookingData?.bookingId || bookingData?.bookingId;
 
       const options = {
         key: data.key,
         amount: data.order.amount,
         currency: data.order.currency || 'INR',
         name: 'Hotel Booking',
-        description: room?.title || 'Room booking payment',
+        description:
+          provider === 'Card'
+            ? `${room?.title || 'Room booking'} - Card Payment`
+            : `${room?.title || 'Room booking'} - Razorpay Payment`,
         order_id: data.order.id,
         prefill: {
-          name: `${formData.firstName} ${formData.lastName}`.trim(),
-          email: formData.email,
-          contact: formData.phone,
-        },
-        notes: {
-          roomId: bookingData?.roomId || '',
-          checkInDate: bookingData?.checkInDate || '',
-          checkOutDate: bookingData?.checkOutDate || '',
+          name: `${formData.firstName || ''} ${formData.lastName || ''}`.trim(),
+          email: formData.email || '',
+          contact: formData.phone || '',
         },
         theme: {
           color: '#2563eb',
         },
         handler: async (response) => {
           try {
-            const verifyRes = await api.post('/bookings/verify', {
+            const verifyPayload = {
               paymentId: response.razorpay_payment_id,
               orderId: response.razorpay_order_id,
               signature: response.razorpay_signature,
-              bookingData: data.bookingData,
-            });
+            };
 
-            toast.success('Payment successful and booking confirmed');
+            const verifyRes = pendingBookingId
+              ? await api.post(`/bookings/${pendingBookingId}/verify-payment`, verifyPayload)
+              : await api.post('/bookings/verify', {
+                  ...verifyPayload,
+                  bookingData: data.bookingData,
+                });
+
+            let ensuredNotification = verifyRes?.data?.notification || null;
+            const verifiedBookingId = verifyRes.data?.booking?._id || '';
+            if (!ensuredNotification && verifiedBookingId) {
+              try {
+                const notificationRes = await api.post(
+                  `/notifications/payment-success/${verifiedBookingId}`
+                );
+                ensuredNotification = notificationRes?.data?.notification || null;
+              } catch (notificationError) {
+                console.error(
+                  'Failed to ensure payment notification:',
+                  notificationError?.response?.data || notificationError.message
+                );
+              }
+            }
+
+            let ensuredEmailStatus = verifyRes?.data?.emailStatus || null;
+            if (ensuredEmailStatus !== 'sent' && verifiedBookingId) {
+              try {
+                const emailRes = await api.post(
+                  `/bookings/${verifiedBookingId}/resend-confirmation-email`
+                );
+                ensuredEmailStatus = emailRes?.data?.emailStatus || ensuredEmailStatus;
+              } catch (emailError) {
+                console.error(
+                  'Failed to ensure booking confirmation email:',
+                  emailError?.response?.data || emailError.message
+                );
+              }
+            }
+
+            notifyPaymentSuccessStatus(
+              ensuredEmailStatus,
+              verifyRes?.data?.notificationCreated ?? Boolean(ensuredNotification)
+            );
+            if (ensuredNotification) {
+              window.dispatchEvent(
+                new CustomEvent('app:notification-created', {
+                  detail: { notification: ensuredNotification },
+                })
+              );
+            }
+            window.dispatchEvent(new Event('app:notifications-updated'));
+            await api.get('/notifications');
             sessionStorage.removeItem('bookingData');
-            navigate(`/billing?id=${verifyRes.data?.booking?._id}`);
+            navigate('/gratitude', {
+              state: {
+                title: 'Booking Confirmed',
+                message: `Your booking for ${room?.title || 'the selected room'} is confirmed.`,
+                bookingId: verifyRes.data?.booking?._id || '',
+                notification: ensuredNotification,
+                notificationCreated:
+                  verifyRes.data?.notificationCreated ?? Boolean(ensuredNotification),
+              },
+            });
           } catch (err) {
             toast.error(err?.response?.data?.message || 'Payment verification failed');
           } finally {
@@ -332,7 +484,6 @@ function Checkout() {
         modal: {
           ondismiss: () => {
             setPaymentProcessing(false);
-            toast.error('Payment cancelled');
           },
         },
       };
@@ -341,17 +492,8 @@ function Checkout() {
       razorpay.open();
     } catch (err) {
       setPaymentProcessing(false);
-      toast.error(err?.response?.data?.message || err.message || 'Failed to start Razorpay');
+      toast.error(err?.response?.data?.message || err.message || 'Failed to start payment');
     }
-  };
-
-  const handleCardPayment = () => {
-    if (!cardDetails.number || !cardDetails.expiry || !cardDetails.cvv) {
-      toast.error('Please fill card details');
-      return;
-    }
-
-    handleRazorpayPayment('Card');
   };
 
   if (pageLoading) {
@@ -539,13 +681,12 @@ function Checkout() {
           <div className="bg-white shadow-lg rounded-2xl p-6 sticky top-6 h-fit">
             <h3 className="font-semibold mb-3">Booking Summary</h3>
             <img
-              src={
-                room?.imageUrls
-                  ? room.imageUrls[0] || 'https://via.placeholder.com/200'
-                  : 'https://via.placeholder.com/200'
-              }
+              src={getSafeImageUrl(room?.imageUrls?.[0], fallbackRoomImage)}
               alt={room?.title || 'Room'}
               className="rounded-lg mb-3"
+              onError={(e) => {
+                e.currentTarget.src = fallbackRoomImage;
+              }}
             />
             <p className="font-medium">{room?.title || ''}</p>
             <p className="text-sm text-gray-500">{room?.roomType || ''}</p>
@@ -578,98 +719,83 @@ function Checkout() {
       ) : (
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white shadow-lg rounded-2xl p-6">
-            <h2 className="text-xl font-semibold mb-4">Select Payment Method</h2>
+            <h2 className="text-xl font-semibold mb-4">Payment Method</h2>
 
             <div className="space-y-4">
-              <button
-                type="button"
-                onClick={handleRazorpayPayment}
-                className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
-                disabled={paymentProcessing}
-              >
-                {paymentProcessing && selectedPayment === 'Razorpay'
-                  ? 'Processing...'
-                  : 'Pay with Razorpay'}
-              </button>
+              <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-5">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-lg font-semibold text-slate-900">Cash</p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Pay directly at the hotel during check-in.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-yellow-200 px-3 py-1 text-xs font-semibold text-yellow-800">
+                    Available
+                  </span>
+                </div>
 
-              <div className="border rounded-lg p-4 space-y-3">
                 <button
                   type="button"
-                  onClick={() => setSelectedPayment('Card')}
-                  className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
+                  onClick={handleCashPayment}
+                  className="w-full bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600"
                   disabled={paymentProcessing}
                 >
-                  Pay with Card
+                  {paymentProcessing && selectedPayment === 'Cash'
+                    ? 'Processing...'
+                    : 'Proceed to Payment'}
                 </button>
-
-                {selectedPayment === 'Card' && (
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      placeholder="Card Number"
-                      value={cardDetails.number}
-                      onChange={(e) =>
-                        setCardDetails((prev) => ({ ...prev, number: e.target.value }))
-                      }
-                      className="border p-2 rounded-lg w-full"
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <input
-                        type="text"
-                        placeholder="MM/YY"
-                        value={cardDetails.expiry}
-                        onChange={(e) =>
-                          setCardDetails((prev) => ({ ...prev, expiry: e.target.value }))
-                        }
-                        className="border p-2 rounded-lg w-full"
-                      />
-                      <input
-                        type="password"
-                        placeholder="CVV"
-                        value={cardDetails.cvv}
-                        onChange={(e) =>
-                          setCardDetails((prev) => ({ ...prev, cvv: e.target.value }))
-                        }
-                        className="border p-2 rounded-lg w-full"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleCardPayment}
-                      className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700"
-                      disabled={paymentProcessing}
-                    >
-                      {paymentProcessing && selectedPayment === 'Card'
-                        ? 'Processing...'
-                        : 'Confirm Card Payment'}
-                    </button>
-                  </div>
-                )}
               </div>
 
-              <button
-                type="button"
-                onClick={handleCashPayment}
-                className="w-full bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600"
-                disabled={paymentProcessing}
-              >
-                {paymentProcessing && selectedPayment === 'Cash'
-                  ? 'Processing...'
-                  : 'Pay with Cash'}
-              </button>
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-lg font-semibold text-slate-900">Pay Online</p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Choose Razorpay or Card to pay securely online.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-blue-200 px-3 py-1 text-xs font-semibold text-blue-800">
+                    Online
+                  </span>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleOnlinePayment('Razorpay')}
+                    className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
+                    disabled={paymentProcessing}
+                  >
+                    {paymentProcessing && selectedPayment === 'Online'
+                      ? 'Opening Razorpay...'
+                      : 'Razorpay'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOnlinePayment('Card')}
+                    className="w-full bg-slate-900 text-white py-2 rounded-lg hover:bg-slate-800"
+                    disabled={paymentProcessing}
+                  >
+                    {paymentProcessing && selectedPayment === 'Online'
+                      ? 'Opening Card Payment...'
+                      : 'Card'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="bg-white shadow-lg rounded-2xl p-6 sticky top-6 h-fit">
             <h3 className="font-semibold mb-3">Booking Summary</h3>
             <img
-              src={
-                room?.imageUrls
-                  ? room.imageUrls[0] || 'https://via.placeholder.com/200'
-                  : 'https://via.placeholder.com/200'
-              }
+              src={getSafeImageUrl(room?.imageUrls?.[0], fallbackRoomImage)}
               alt={room?.title || 'Room'}
               className="rounded-lg mb-3"
+              onError={(e) => {
+                e.currentTarget.src = fallbackRoomImage;
+              }}
             />
             <p className="font-medium">{room?.title || ''}</p>
             <p className="text-sm text-gray-500">{room?.roomType || ''}</p>

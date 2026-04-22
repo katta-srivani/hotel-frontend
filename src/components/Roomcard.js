@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import api from "../utils/api";
 import { FaHeart, FaStar, FaRegStar } from "react-icons/fa";
+import { fallbackRoomImage, getSafeImageUrl } from "../utils/image";
 
 
 
@@ -79,11 +80,10 @@ function RoomCard({ room }) {
   // Special images for beach view and favorites
   const beachImage = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80";
   const favImage = "https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=600&q=80";
-  const defaultImage = "https://via.placeholder.com/400x300/e5e7eb/999?text=Room";
 
-  let imageUrl = defaultImage;
+  let imageUrl = fallbackRoomImage;
   if (room?.imageUrls?.[0] && !imageError) {
-    imageUrl = room.imageUrls[0];
+    imageUrl = getSafeImageUrl(room.imageUrls[0], fallbackRoomImage);
   } else if ((room?.view || room?.category || "").toLowerCase().includes("beach")) {
     imageUrl = beachImage;
   } else if (room?.isFavorite || isFavorite) {

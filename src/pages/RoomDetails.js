@@ -6,6 +6,7 @@ import { AuthContext } from "../context/AuthContext";
 import { FaStar, FaRegStar } from "react-icons/fa";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { fallbackRoomImage, getSafeImageUrl } from "../utils/image";
 
 // Helper to get all dates between two dates (inclusive)
 function getDatesBetween(start, end) {
@@ -34,10 +35,55 @@ function formatDateValue(date) {
   return `${year}-${month}-${day}`;
 }
 
+const PAYMENT_HOLD_WINDOW_MS = 10 * 60 * 1000;
+
 function RoomDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
+
+  const validateBookingForm = () => {
+    if (!room) {
+      toast.error("Room details are not loaded yet");
+      return false;
+    }
+
+    if (!checkInDate || !checkOutDate) {
+      toast.error("Please select both check-in and check-out dates");
+      return false;
+    }
+
+    if (new Date(checkOutDate) <= new Date(checkInDate)) {
+      toast.error("Check-out date must be after check-in date");
+      return false;
+    }
+
+    if (guests < 1) {
+      toast.error("Please enter at least one guest");
+      return false;
+    }
+
+    if (guests > Number(room.maxGuests || 0)) {
+      toast.error(`This room allows up to ${room.maxGuests} guests`);
+      return false;
+    }
+
+    const requiredFields = [
+      ["first name", guestInfo.firstName],
+      ["last name", guestInfo.lastName],
+      ["email", guestInfo.email],
+      ["phone", guestInfo.phone],
+    ];
+
+    const missing = requiredFields.find(([, value]) => !String(value || "").trim());
+    if (missing) {
+      toast.error(`Please enter ${missing[0]}`);
+      return false;
+    }
+
+    return true;
+  };
+
   // Wishlist toggle handler
   const handleToggleWishlist = async () => {
     if (!user) return toast.error("Login first");
@@ -154,6 +200,10 @@ function RoomDetails() {
   const [pendingBookingId, setPendingBookingId] = useState(null);
   const [currentBooking, setCurrentBooking] = useState(null);
   const saveBookingAndGoToCheckout = (preferredPayment) => {
+    if (!validateBookingForm()) {
+      return;
+    }
+
     const bookingData = {
       roomId: room._id,
       checkInDate,
@@ -165,6 +215,14 @@ function RoomDetails() {
       phone: guestInfo.phone,
       address: guestInfo.address,
       specialRequests: guestInfo.specialRequests,
+      guestDetails: {
+        firstName: guestInfo.firstName,
+        lastName: guestInfo.lastName,
+        email: guestInfo.email,
+        phone: guestInfo.phone,
+        address: guestInfo.address,
+        specialRequests: guestInfo.specialRequests,
+      },
       preferredPayment,
     };
 
@@ -196,7 +254,7 @@ function RoomDetails() {
         (b) =>
           b.room._id === id &&
           b.status !== "cancelled" &&
-          ["pending", "approved"].includes(b.status)
+          ["hold", "approved"].includes(b.status)
       );
       if (booking) {
         setIsBooked(true);
@@ -222,7 +280,10 @@ function RoomDetails() {
       return; // ✅ skip COD
 
     const interval = setInterval(() => {
-      const diff = new Date(currentBooking.expiresAt) - new Date();
+      const diff =
+        new Date(currentBooking.expiresAt).getTime() +
+        PAYMENT_HOLD_WINDOW_MS -
+        Date.now();
 
       if (diff <= 0) {
         setTimeLeft("Expired");
@@ -389,6 +450,14 @@ function RoomDetails() {
                           </span>
                         </div>
                         <div className="text-gray-700 text-sm leading-relaxed">{r.comment}</div>
+                        {r.adminReply?.message && (
+                          <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 p-3">
+                            <div className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                              Admin Reply
+                            </div>
+                            <div className="mt-1 text-sm text-blue-900">{r.adminReply.message}</div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -442,9 +511,12 @@ function RoomDetails() {
           {room.imageUrls.map((url, idx) => (
             <img
               key={idx}
-              src={url}
+              src={getSafeImageUrl(url, fallbackRoomImage)}
               alt={room.title ? `${room.title} image ${idx + 1}` : `Room image ${idx + 1}`}
               className="rounded-2xl w-full h-64 object-cover shadow-lg border border-gray-100"
+              onError={(e) => {
+                e.currentTarget.src = fallbackRoomImage;
+              }}
             />
           ))}
         </div>
@@ -467,6 +539,9 @@ function RoomDetails() {
             )}
             {room.view && (
               <span className="bg-blue-50 px-3 py-1 rounded-full text-sm border border-blue-100">View: {room.view}</span>
+            )}
+            {room.location && (
+              <span className="bg-blue-50 px-3 py-1 rounded-full text-sm border border-blue-100">Location: {room.location}</span>
             )}
             <span className="bg-blue-50 px-3 py-1 rounded-full text-sm border border-blue-100">Max Guests: {room.maxGuests}</span>
           </div>
@@ -508,12 +583,12 @@ function RoomDetails() {
         <div className="mb-3">
           <span
             className={`px-4 py-2 rounded ${
-              currentBooking?.status === "pending"
+              currentBooking?.status === "hold"
                 ? "bg-yellow-100 text-yellow-700"
                 : "bg-green-100 text-green-700"
             }`}
           >
-            {currentBooking?.status === "pending"
+            {currentBooking?.status === "hold"
               ? "Pending Payment"
               : "Booking Confirmed"}
           </span>
@@ -529,9 +604,7 @@ function RoomDetails() {
       {pendingBookingId && currentBooking?.paymentMethod !== "cash" && (
         <button
           className="bg-yellow-500 text-white px-5 py-2 rounded-lg mt-3"
-          onClick={() =>
-            (window.location.href = `/checkout?bookingId=${pendingBookingId}`)
-          }
+          onClick={() => navigate(`/billing?id=${pendingBookingId}`)}
         >
           Complete Payment
         </button>
@@ -679,21 +752,14 @@ function RoomDetails() {
                 onChange={e => setGuestInfo(g => ({ ...g, specialRequests: e.target.value }))}
                 className="border rounded px-3 py-2"
               />
-              {/* Payment choice buttons */}
+              {/* Booking action */}
               <div className="flex gap-2 mt-2">
-                <button
-                  type="button"
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg flex-1"
-                  onClick={() => saveBookingAndGoToCheckout("online")}
-                >
-                  Pay Online
-                </button>
                 <button
                   type="button"
                   className="bg-yellow-500 text-white px-6 py-2 rounded-lg flex-1 hover:bg-yellow-600"
                   onClick={() => saveBookingAndGoToCheckout("cash")}
                 >
-                  Pay At Hotel
+                  Proceed to Payment
                 </button>
                 <button
                   type="button"

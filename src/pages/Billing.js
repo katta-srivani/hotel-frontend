@@ -18,6 +18,51 @@ const loadRazorpayScript = () =>
     document.body.appendChild(script);
   });
 
+const notifyEmailStatus = (status) => {
+  if (!status || status === 'skipped') {
+    return;
+  }
+
+  if (status === 'sent') {
+    toast.success('Confirmation email sent');
+    return;
+  }
+
+  if (status === 'partial') {
+    toast('Confirmation email sent to some recipients only');
+    return;
+  }
+
+  toast.error('Payment was recorded, but the confirmation email was not accepted by the mail server');
+};
+
+const notifyPaymentSuccessStatus = (emailStatus, notificationCreated) => {
+  if (emailStatus === 'sent') {
+    toast.success(
+      notificationCreated === false
+        ? 'Payment successful. Confirmation email sent.'
+        : 'Payment successful. Confirmation email sent and notification created.'
+    );
+    return;
+  }
+
+  if (emailStatus === 'partial') {
+    toast.success(
+      notificationCreated === false
+        ? 'Payment successful. Email sent to some recipients.'
+        : 'Payment successful. Notification created and email sent to some recipients.'
+    );
+    return;
+  }
+
+  toast.success(
+    notificationCreated === false
+      ? 'Payment successful.'
+      : 'Payment successful. Notification created.'
+  );
+  notifyEmailStatus(emailStatus);
+};
+
 function Billing() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -238,7 +283,60 @@ function Billing() {
             });
 
             setBooking(verifyRes.data.booking);
-            toast.success('Payment successful');
+            let ensuredNotification = verifyRes?.data?.notification || null;
+            const verifiedBookingId = verifyRes.data?.booking?._id || booking._id || '';
+            if (!ensuredNotification && verifiedBookingId) {
+              try {
+                const notificationRes = await api.post(
+                  `/notifications/payment-success/${verifiedBookingId}`
+                );
+                ensuredNotification = notificationRes?.data?.notification || null;
+              } catch (notificationError) {
+                console.error(
+                  'Failed to ensure payment notification:',
+                  notificationError?.response?.data || notificationError.message
+                );
+              }
+            }
+
+            let ensuredEmailStatus = verifyRes?.data?.emailStatus || null;
+            if (ensuredEmailStatus !== 'sent' && verifiedBookingId) {
+              try {
+                const emailRes = await api.post(
+                  `/bookings/${verifiedBookingId}/resend-confirmation-email`
+                );
+                ensuredEmailStatus = emailRes?.data?.emailStatus || ensuredEmailStatus;
+              } catch (emailError) {
+                console.error(
+                  'Failed to ensure booking confirmation email:',
+                  emailError?.response?.data || emailError.message
+                );
+              }
+            }
+
+            notifyPaymentSuccessStatus(
+              ensuredEmailStatus,
+              verifyRes?.data?.notificationCreated ?? Boolean(ensuredNotification)
+            );
+            if (ensuredNotification) {
+              window.dispatchEvent(
+                new CustomEvent('app:notification-created', {
+                  detail: { notification: ensuredNotification },
+                })
+              );
+            }
+            window.dispatchEvent(new Event('app:notifications-updated'));
+            await api.get('/notifications');
+            navigate('/gratitude', {
+              state: {
+                title: 'Booking Confirmed',
+                message: `Your booking for ${booking.room?.title || 'the selected room'} is confirmed.`,
+                bookingId: verifyRes.data?.booking?._id || booking._id || '',
+                notification: ensuredNotification,
+                notificationCreated:
+                  verifyRes.data?.notificationCreated ?? Boolean(ensuredNotification),
+              },
+            });
           } catch (err) {
             toast.error(err?.response?.data?.message || 'Payment verification failed');
           } finally {
@@ -268,13 +366,11 @@ function Billing() {
     return <div className="text-center mt-10 text-red-600">Booking not found.</div>;
   }
 
-  const isPendingPayment = booking.paymentStatus !== 'paid' && booking.status !== 'cancelled';
-  const paymentMethodLabel =
-    booking.paymentMethod === 'online'
-      ? booking.razorpayPaymentId
-        ? 'Razorpay / Card'
-        : 'Razorpay'
-      : 'Cash';
+  const isPendingPayment =
+    booking.paymentStatus !== 'paid' &&
+    booking.paymentStatus !== 'cancelled' &&
+    booking.status !== 'cancelled';
+  const paymentMethodLabel = booking.paymentMethod === 'online' ? 'Online' : 'Cash';
   const paymentBadgeClass =
     booking.paymentStatus === 'paid'
       ? 'bg-emerald-100 text-emerald-700'
@@ -307,8 +403,8 @@ function Billing() {
                 </div>
                 <h1 className="text-3xl font-black tracking-tight">Booking Receipt</h1>
                 <p className="mt-2 max-w-xl text-sm text-blue-50">
-                  This invoice is available for Razorpay, Card, and Cash bookings. You can
-                  download it anytime and use it as your payment record.
+                  This invoice is available for your booking record and can be downloaded
+                  anytime.
                 </p>
               </div>
 
@@ -450,9 +546,8 @@ function Billing() {
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Invoice Note</p>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  This receipt is generated for Cash, Razorpay, and Card bookings. If the
-                  booking is unpaid, you can reopen payment from this screen and continue with
-                  Razorpay anytime before cancellation.
+                  This receipt confirms your booking details and selected payment method. For
+                  cash bookings, payment is collected at the hotel.
                 </p>
               </div>
             </div>

@@ -20,7 +20,7 @@ function Login() {
     }
   }, [isAuthenticated, navigate]);
 
-  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,7 +40,7 @@ function Login() {
     try {
       const result = await login(cleanEmail, password);
       if (result && result.success) {
-        toast.success("Login successful! 🎉");
+        toast.success("Login successful!");
         navigate("/", { replace: true });
       } else {
         toast.error(result?.message || "Invalid email or password");
@@ -56,22 +56,18 @@ function Login() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-blue-700 to-blue-500 px-4">
       <div className="bg-white shadow-2xl rounded-xl max-w-4xl w-full grid md:grid-cols-2">
-        {/* LEFT SIDE */}
         <div className="hidden md:flex flex-col justify-center bg-blue-700 text-white p-8 rounded-l-xl">
-          <h1 className="text-4xl font-bold mb-4">Welcome Back 👋</h1>
+          <h1 className="text-4xl font-bold mb-4">Welcome Back</h1>
           <p className="text-blue-100">
             Login to manage your bookings and explore hotels with ease.
           </p>
         </div>
 
-        {/* RIGHT SIDE */}
         <div className="p-8 md:p-12">
           <h2 className="text-3xl font-bold mb-2">Sign In</h2>
           <p className="text-gray-500 mb-6">Enter your credentials to access your account</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-
-            {/* EMAIL */}
             <div>
               <label className="block text-gray-700 font-medium mb-1">Email</label>
               <div className="flex items-center border rounded-lg overflow-hidden">
@@ -89,7 +85,6 @@ function Login() {
               </div>
             </div>
 
-            {/* PASSWORD */}
             <div>
               <label className="block text-gray-700 font-medium mb-1">Password</label>
               <div className="flex items-center border rounded-lg overflow-hidden">
@@ -113,7 +108,6 @@ function Login() {
               </div>
             </div>
 
-            {/* FORGOT PASSWORD */}
             <div className="text-right">
               <Link
                 to="/forgot-password"
@@ -123,7 +117,6 @@ function Login() {
               </Link>
             </div>
 
-            {/* SUBMIT BUTTON */}
             <button
               type="submit"
               disabled={loading}
@@ -132,19 +125,30 @@ function Login() {
                   ? "bg-blue-400 cursor-not-allowed"
                   : "bg-gradient-to-r from-blue-600 to-blue-800 bg-blue-700 hover:scale-105 shadow-lg"
               }`}
-              style={{ background: loading ? undefined : 'linear-gradient(to right, #2563eb, #1e40af), #2563eb' }}
+              style={{
+                background: loading
+                  ? undefined
+                  : "linear-gradient(to right, #2563eb, #1e40af), #2563eb",
+              }}
             >
               {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
 
-          {/* REGISTER LINK */}
           <p className="text-center mt-6 text-gray-500 text-sm">
-            Don’t have an account?{" "}
+            Don't have an account?{" "}
             <Link to="/register" className="text-blue-600 font-semibold hover:underline">
               Create one
             </Link>
           </p>
+
+          <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
+            <p className="font-semibold mb-2">Demo credentials</p>
+            <p>User: <span className="font-mono">user@example.com</span></p>
+            <p>Password: <span className="font-mono">Password@123</span></p>
+            <p className="mt-2">Admin: <span className="font-mono">admin@example.com</span></p>
+            <p>Password: <span className="font-mono">Admin@123</span></p>
+          </div>
         </div>
       </div>
     </div>

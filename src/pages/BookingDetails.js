@@ -15,7 +15,7 @@ function BookingDetails() {
       try {
         setLoading(true);
         const res = await api.get(`/bookings/${id}`);
-        setBooking(res.data.booking);
+        setBooking(res.data.booking || res.data.data);
       } catch (err) {
         setError(err.response?.data?.message || "Failed to load booking details");
       } finally {
@@ -57,7 +57,7 @@ function BookingDetails() {
     <div className="flex justify-center py-10 px-4">
       <div className="w-full max-w-xl">
         <h2 className="text-2xl font-bold mb-6 text-center">Booking Details</h2>
-        <div className="bg-white shadow-lg rounded-2xl p-6">
+          <div className="bg-white shadow-lg rounded-2xl p-6">
           <h5 className="text-lg font-semibold mb-4">{booking.room?.title}</h5>
           <div className="space-y-2 text-gray-600">
             <p className="flex items-center gap-2">
@@ -70,8 +70,10 @@ function BookingDetails() {
             </p>
             <p className="flex items-center gap-2">
               <FaMapMarkerAlt className="text-blue-500" />
-              {booking.room?.roomType}
+              {booking.room?.category || booking.room?.roomType || "Hotel Room"}
             </p>
+            <p className="text-sm">Booking ID: {booking._id}</p>
+            <p className="text-sm">Payment Method: {booking.paymentMethod || "pending"}</p>
             <p className="text-sm">Guests: {booking.guestDetails?.firstName} {booking.guestDetails?.lastName} ({booking.guestDetails?.email}, {booking.guestDetails?.phone})</p>
             <p className="text-sm">Special Requests: {booking.guestDetails?.specialRequests || "-"}</p>
           </div>

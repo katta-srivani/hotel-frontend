@@ -11,7 +11,6 @@ import {
   Legend
 } from 'chart.js';
 import api from '../utils/api';
-import NotificationBell from '../components/NotificationBell';
 import toast from 'react-hot-toast';
 import {
   FaPlus, FaTrash, FaEdit, FaChartBar
@@ -207,6 +206,7 @@ function AdminDashboard() {
     roomType: 'Standard',
     pricePerNight: '',
     description: '',
+    location: '',
     maxGuests: '',
     bedType: '',
     size: '',
@@ -289,6 +289,30 @@ function AdminDashboard() {
   const handleDeleteReview = async (id) => {
     await api.delete(`/reviews/${id}`);
     setUnapprovedReviews(prev => prev.filter(r => r?._id !== id));
+  };
+
+  const handleReplyToReview = async (review) => {
+    const currentReply = review?.adminReply?.message || '';
+    const message = window.prompt('Enter admin reply', currentReply);
+
+    if (message === null) return;
+
+    if (!message.trim()) {
+      toast.error('Reply cannot be empty');
+      return;
+    }
+
+    try {
+      const res = await api.put(`/reviews/admin/reply/${review._id}`, {
+        message: message.trim(),
+      });
+      setUnapprovedReviews((prev) =>
+        prev.map((item) => (item._id === review._id ? res.data?.review || item : item))
+      );
+      toast.success('Reply saved');
+    } catch (err) {
+      toast.error('Failed to save reply');
+    }
   };
 
   const handleDeleteUser = async (id) => {
@@ -380,7 +404,6 @@ function AdminDashboard() {
       {/* HEADER */}
       <nav className="bg-blue-700 text-white shadow-md p-3 flex items-center gap-2 justify-between">
         <span className="flex items-center gap-2"><FaChartBar /> Admin Dashboard</span>
-        <NotificationBell />
       </nav>
 
       {/* TABS */}
@@ -479,6 +502,10 @@ function AdminDashboard() {
                   <div>
                     <label className="block text-xs font-semibold mb-1">Description</label>
                     <textarea name="description" value={roomForm.description} onChange={handleRoomFormChange} className="border p-1 rounded w-full" required />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1">Location</label>
+                    <input name="location" value={roomForm.location} onChange={handleRoomFormChange} className="border p-1 rounded w-full" placeholder="City, area or landmark" />
                   </div>
                   <div className="flex gap-2">
                     <div className="flex-1">
@@ -851,8 +878,16 @@ function AdminDashboard() {
                                 title="Approve"
                                 onClick={async () => {
                                   try {
-                                    await api.put(`/bookings/admin/${b._id}/status`, { status: 'approved' });
+                                    const res = await api.put(`/bookings/admin/${b._id}/status`, { status: 'approved' });
                                     toast.success('Booking approved');
+                                    if (res?.data?.notification) {
+                                      window.dispatchEvent(
+                                        new CustomEvent('app:notification-created', {
+                                          detail: { notification: res.data.notification },
+                                        })
+                                      );
+                                    }
+                                    window.dispatchEvent(new Event('app:notifications-updated'));
                                     fetchData();
                                   } catch (err) {
                                     toast.error('Failed to approve');
@@ -865,8 +900,16 @@ function AdminDashboard() {
                                 onClick={async () => {
                                   if (!window.confirm('Reject (cancel) this booking?')) return;
                                   try {
-                                    await api.put(`/bookings/admin/${b._id}/status`, { status: 'cancelled' });
+                                    const res = await api.put(`/bookings/admin/${b._id}/status`, { status: 'cancelled' });
                                     toast.success('Booking cancelled');
+                                    if (res?.data?.notification) {
+                                      window.dispatchEvent(
+                                        new CustomEvent('app:notification-created', {
+                                          detail: { notification: res.data.notification },
+                                        })
+                                      );
+                                    }
+                                    window.dispatchEvent(new Event('app:notifications-updated'));
                                     fetchData();
                                   } catch (err) {
                                     toast.error('Failed to cancel');
@@ -956,6 +999,7 @@ function AdminDashboard() {
                     <th className="p-2 text-left text-xs font-bold">User</th>
                     <th className="p-2 text-left text-xs font-bold">Rating</th>
                     <th className="p-2 text-left text-xs font-bold">Comment</th>
+                    <th className="p-2 text-left text-xs font-bold">Admin Reply</th>
                     <th className="p-2 text-left text-xs font-bold">Status</th>
                     <th className="p-2 text-left text-xs font-bold">Actions</th>
                   </tr>
@@ -967,6 +1011,7 @@ function AdminDashboard() {
                       <td className="p-2">{review.user?.email || review.user?.name || review.user}</td>
                       <td className="p-2 font-semibold">{review.rating}</td>
                       <td className="p-2 max-w-md break-words">{review.comment}</td>
+                      <td className="p-2 max-w-md break-words">{review.adminReply?.message || 'No reply yet'}</td>
                       <td className="p-2">
                         {review.isApproved ? (
                           <span className="text-green-600 font-semibold">Approved</span>
@@ -983,6 +1028,12 @@ function AdminDashboard() {
                             Approve
                           </button>
                         )}
+                        <button
+                          onClick={() => handleReplyToReview(review)}
+                          className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                        >
+                          {review.adminReply?.message ? 'Edit Reply' : 'Reply'}
+                        </button>
                         <button
                           onClick={() => handleDeleteReview(review._id)}
                           className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
